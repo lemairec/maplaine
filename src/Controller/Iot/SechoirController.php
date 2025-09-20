@@ -77,8 +77,6 @@ class SechoirController extends CommonController
             } else {
                 $begin->modify('-1 day');
             }
-            dump($begin);
-            dump($end);
             
         }
         
