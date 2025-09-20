@@ -57,7 +57,32 @@ class SechoirController extends CommonController
         
         $begin = $request->query->get('begin');
         $end = $request->query->get('end');
-
+        $duree = $request->query->get('duree');
+        
+        if($begin == null){
+            $end = new Datetime();
+            $begin = new Datetime();
+            if($duree == "all"){
+                $begin->modify('-24 month');
+            } else if($duree == "2m"){
+                $begin->modify('-2 month');
+            } else if($duree == "1m"){
+                $begin->modify('-1 month');
+            } else if($duree == "6m"){
+                $begin->modify('-6 month');
+            } else if($duree == "1w"){
+                $begin->modify('-7 day');
+            } else if($duree == "1d"){
+                $begin->modify('-1 day');
+            } else {
+                $begin->modify('-1 day');
+            }
+            dump($begin);
+            dump($end);
+            
+        }
+        
+        
         $sechoirs = $em->getRepository(Sechoir::class)->getAllBE($begin, $end);
         //dump($sechoirs);
 
