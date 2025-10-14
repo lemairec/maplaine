@@ -74,11 +74,15 @@ class SechoirController extends CommonController
                 $begin->modify('-7 day');
             } else if($duree == "1d"){
                 $begin->modify('-1 day');
+            } else if($duree == "6h"){
+                $begin->modify('-6 hour');
+            } else if($duree == "3h"){
+                $begin->modify('-3 hour');
             } else {
                 $begin->modify('-1 day');
             }
             
-        }
+        };
         
         
         $sechoirs = $em->getRepository(Sechoir::class)->getAllBE($begin, $end);
