@@ -19,6 +19,7 @@ use App\Entity\Gestion\Compte;
 
 use App\Form\Gestion\CommercialisationType;
 use App\Form\Cotation\CotationsCajType;
+use App\Form\Cotation\CotationAddType;
 use App\Form\Cotation\CotationType;
 use App\Form\Cotation\CotationProduitType;
 use App\Form\Cotation\PrixMoyenType;
@@ -169,6 +170,84 @@ class CotationController extends CommonController
                 $cotation->produit_str = $cotation->produit->label;
             }
             $em->flush();
+            return $this->redirectToRoute('cotations_all');
+        }
+        return $this->render('base_form.html.twig', array(
+            'form' => $form->createView(),
+        ));
+    }
+
+    #[Route(path: '/cotation_add', name: 'cotation_add')]
+    public function cotationAddEditAction(Request $request)
+    {
+        $this->check_user($request);
+        $em = $this->getDoctrine()->getManager();
+        $form = $this->createForm(CotationAddType::class);
+        $form->handleRequest($request);
+
+
+        if ($form->isSubmitted()) {
+
+            if($form["value1"]){
+                $cotation = new Cotation();
+                $cotation->source = $form->get('source')->getData();
+                $cotation->campagne = $form->get('campagne')->getData();
+                $cotation->date = $form->get('date')->getData();
+                $cotation->produit = $form->get('produit1')->getData();; 
+                $cotation->value = $form->get('value1')->getData();; 
+                $cotation->produit_str = $cotation->produit->label;
+                $em->persist($cotation);
+                $em->flush();
+            }
+
+            if($form->get('value2')->getData()){
+                $cotation = new Cotation();
+                $cotation->source = $form->get('source')->getData();
+                $cotation->campagne = $form->get('campagne')->getData();
+                $cotation->date = $form->get('date')->getData();
+                $cotation->produit = $form->get('produit2')->getData();; 
+                $cotation->value = $form->get('value2')->getData();; 
+                $cotation->produit_str = $cotation->produit->label;
+                $em->persist($cotation);
+                $em->flush();
+            }
+
+            if($form->get('value3')->getData()){
+                $cotation = new Cotation();
+                $cotation->source = $form->get('source')->getData();
+                $cotation->campagne = $form->get('campagne')->getData();
+                $cotation->date = $form->get('date')->getData();
+                $cotation->produit = $form->get('produit3')->getData();; 
+                $cotation->value = $form->get('value3')->getData();; 
+                $cotation->produit_str = $cotation->produit->label;
+                $em->persist($cotation);
+                $em->flush();
+            }
+
+            if($form->get('value4')->getData()){
+                $cotation = new Cotation();
+                $cotation->source = $form->get('source')->getData();
+                $cotation->campagne = $form->get('campagne')->getData();
+                $cotation->date = $form->get('date')->getData();
+                $cotation->produit = $form->get('produit4')->getData();; 
+                $cotation->value = $form->get('value4')->getData();; 
+                $cotation->produit_str = $cotation->produit->label;
+                $em->persist($cotation);
+                $em->flush();
+            }
+
+            if($form->get('value5')->getData()){
+                $cotation = new Cotation();
+                $cotation->source = $form->get('source')->getData();
+                $cotation->campagne = $form->get('campagne')->getData();
+                $cotation->date = $form->get('date')->getData();
+                $cotation->produit = $form->get('produit5')->getData();; 
+                $cotation->value = $form->get('value5')->getData();; 
+                $cotation->produit_str = $cotation->produit->label;
+                $em->persist($cotation);
+                $em->flush();
+            }
+            
             return $this->redirectToRoute('cotations_all');
         }
         return $this->render('base_form.html.twig', array(
