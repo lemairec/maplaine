@@ -17,7 +17,8 @@ class EmpruntRepository extends \Doctrine\ORM\EntityRepository
     function getAllForCompany($company){
         return $this->createQueryBuilder('p')
             ->where('p.company = :company')
-            ->orderBy('p.date', 'DESC')
+            ->addOrderBy('p.enable', 'DESC')
+            ->addOrderBy('p.date', 'DESC')
             ->setParameter('company', $company)
             ->getQuery()->getResult();
     }
