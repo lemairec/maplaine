@@ -36,11 +36,13 @@ class EmpruntController extends CommonController
         foreach($emprunts as $emprunt){
             $emprunt->reste = 0;
 
-            $operations = $em->getRepository(Operation::class)->findByEmprunt($emprunt);
-            foreach($operations as $o){
-                foreach($o->ecritures as $e){
-                    if($e->compte->id == $emprunt->compteEmprunt->id){
-                        $emprunt->reste = $emprunt->reste + $e->value;
+            if($emprunt->enable){
+                $operations = $em->getRepository(Operation::class)->findByEmprunt($emprunt);
+                foreach($operations as $o){
+                    foreach($o->ecritures as $e){
+                        if($e->compte->id == $emprunt->compteEmprunt->id){
+                            $emprunt->reste = $emprunt->reste + $e->value;
+                        }
                     }
                 }
             }

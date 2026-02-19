@@ -19,6 +19,7 @@ class EmpruntType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options)
     {
         $builder->add('name');
+        $builder->add('enable');
         $builder->add('date', DateType::class, array(
             'widget' => 'single_text',
             'format' => 'dd/MM/yyyy',

@@ -13,6 +13,7 @@
             <th></th>
             <th>Date</th>
             <th>Montant</th>
+            <th>Enable</th>
             <th>Reste</th>
         </tr>
         {% for emprunt in emprunts %}
@@ -20,6 +21,7 @@
                 <td>{{ emprunt.name | my_path('emprunt', {'emprunt_id': emprunt.id}) | raw }}</td>
                 <td>{{ emprunt.date | showDate }} </td>
                 <td>{{ emprunt.montant | showEur }} </td>
+                <td>{{ emprunt.enable }} </td>
                 <td>{{ emprunt.reste | showEur }} </td>
             </tr>
         {% endfor %}

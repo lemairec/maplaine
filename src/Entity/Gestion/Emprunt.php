@@ -47,5 +47,8 @@ class Emprunt
     #[ORM\JoinColumn(nullable: true)]
     public $compteInteret;
 
+    #[ORM\Column(type: 'boolean')]
+    public $enable = true;
+
     public $reste = 0;
 }
