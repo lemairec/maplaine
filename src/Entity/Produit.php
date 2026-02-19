@@ -70,6 +70,28 @@ class Produit
     #[ORM\Column(name: 's', type: 'float')]
     public $engrais_so3 = 0;
 
+    public $engrais_perc = 50;
+
+    public function getEngraisN(){
+        return $this->engrais_n*$this->engrais_perc/100;
+    }
+
+    public function getEngraisP(){
+        return $this->engrais_p*$this->engrais_perc/100;
+    }
+
+    public function getEngraisK(){
+        return $this->engrais_k*$this->engrais_perc/100;
+    }
+
+    public function getEngraisMg(){
+        return $this->engrais_mg*$this->engrais_perc/100;
+    }
+
+    public function getEngraisSO3(){
+        return $this->engrais_so3*$this->engrais_perc/100;
+    }
+
 
     #[ORM\Column(name: 'mo', type: 'float', nullable: true)]
     public $engrais_mo = 0;

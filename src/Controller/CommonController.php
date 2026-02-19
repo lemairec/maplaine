@@ -226,11 +226,11 @@ class CommonController extends AbstractController
             foreach($p->interventions as $it){
                 $p->priceHa += $it->getPriceHa();
                 foreach($it->produits as $produit){
-                    $p->engrais_n += $produit->getQuantityHa() * $produit->produit->engrais_n;
-                    $p->engrais_p += $produit->getQuantityHa() * $produit->produit->engrais_p;
-                    $p->engrais_k += $produit->getQuantityHa() * $produit->produit->engrais_k;
-                    $p->engrais_mg += $produit->getQuantityHa() * $produit->produit->engrais_mg;
-                    $p->engrais_so3 += $produit->getQuantityHa() * $produit->produit->engrais_so3;
+                    $p->engrais_n += $produit->getQuantityHa() * $produit->produit->getEngraisN();
+                    $p->engrais_p += $produit->getQuantityHa() * $produit->produit->getEngraisP();
+                    $p->engrais_k += $produit->getQuantityHa() * $produit->produit->getEngraisK();
+                    $p->engrais_mg += $produit->getQuantityHa() * $produit->produit->getEngraisMg();
+                    $p->engrais_so3 += $produit->getQuantityHa() * $produit->produit->getEngraisSO3();
                 }
                 $poid = 0;
                 foreach($it->recoltes as $recolte){

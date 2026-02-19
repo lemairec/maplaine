@@ -93,13 +93,15 @@
                             {% for it in intervention.produits %}
                             <li>
                                 <div class="row">
-                                    <div class="col-4">
+                                    <div class="col-3">
                                         <i>{{it.produit}}</i>
                                     </div>
-                                    <div class="col-2">
-                                        {% if it.produit.type == "engrais" %}
-                                        <small>{{ (it.produit.engrais_n * it.getQuantityHa()) | showInt}} - {{ (it.produit.engrais_p * it.getQuantityHa()) | showInt }} - {{ (it.produit.engrais_k * it.getQuantityHa()) | showInt}} - {{ (it.produit.engrais_mg * it.getQuantityHa()) | showInt}} - ( S {{ (it.produit.engrais_so3 * it.getQuantityHa()) | showInt}} )</small>
+                                    <div class="col-3">
+                                         <small>
+                                        {% if ((it.produit.engrais_n != 0) or (it.produit.engrais_p != 0))%}
+                                           {{ (it.produit.engrais_n) | showInt}} - {{ (it.produit.engrais_p) | showInt }} - {{ (it.produit.engrais_k) | showInt}} - {{ (it.produit.engrais_mg) | showInt}} - ( S {{ (it.produit.engrais_so3) | showInt}} ) ( {{(it.produit.engrais_perc) | showInt}} %)</small>
                                         {% endif %}
+                                        </small>
                                     </div>
                                     <div class="col-3">
                                         <div style="text-align: right;">{{ it.getQuantityHa() | showUnityHa(it.produit.unity) }}</div>
