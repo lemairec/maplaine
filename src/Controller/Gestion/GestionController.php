@@ -67,11 +67,11 @@ class GestionController extends CommonController
     }
 
     public function getDateColor(){
-        return ["" => "", "2014" => "", "2015" => "", "2016" => "#99ccff", "2017" => "#ff9966", "2018" => "#B6E17B", "2019"=> "#00909e", "2020"=> "#fcba03", "2021"=> "#99ccff", "2022"=> "#ff9966", "2023" => "#B6E17B", "2024"=> "#00909e", "2025"=> "#fcba03"];
+        return ["" => "", "2014" => "", "2015" => "", "2016" => "#99ccff", "2017" => "#ff9966", "2018" => "#B6E17B", "2019"=> "#00909e", "2020"=> "#fcba03", "2021"=> "#99ccff", "2022"=> "#ff9966", "2023" => "#B6E17B", "2024"=> "#00909e", "2025"=> "#fcba03", "2026"=> "#99ccff"];
     }
 
     public function getHidden(){
-        return ["" => false, "2014" => true, "2015" => true, "2016" => true, "2017" => true, "2018" => true, "2019"=> true, "2020"=> true, "2021"=> false, "2022"=> false, "2023"=> false, "2024"=> false, "2025"=> false];
+        return ["" => false, "2014" => true, "2015" => true, "2016" => true, "2017" => true, "2018" => true, "2019"=> true, "2020"=> true, "2021"=> true, "2022"=> false, "2023"=> false, "2024"=> false, "2025"=> false, "2026"=> false];
     }
 
     public function getDataCampagne($campagne, $ecritures){
@@ -102,6 +102,27 @@ class GestionController extends CommonController
             }
 
             $chartjs['data'][] = ['date' => $ecriture['date']->format("d-m")."-2017", 'value' => $ecriture['sum_value'], 'name' => $ecriture['name'] ];
+        }
+        $chartjss[] = $chartjs;
+        return $chartjss;
+    }
+
+    public function getDataWithoutDates($ecritures){
+       $chartjss = [];
+        $chartjs = NULL;
+        $year = 0;
+
+        foreach($ecritures as $ecriture){
+            $new_year = 2025;
+            if($year != $new_year){
+                $year = $new_year;
+                if($chartjs){
+                    $chartjss[] = $chartjs;
+                }
+                $chartjs = ['annee'=> $year, 'data' => [], 'color' => $this->getDateColor()[$year], 'hidden' => $this->getHidden()[$year]];
+            }
+
+            $chartjs['data'][] = ['date' => $ecriture['date']->format("d-m-Y"), 'value' => $ecriture['sum_value'], 'name' => $ecriture['name'] ];
         }
         $chartjss[] = $chartjs;
         return $chartjss;
@@ -370,7 +391,7 @@ class GestionController extends CommonController
             }
         }
 
-        $chartjss = $this->getDataWithDates($ecritures);
+        $chartjss = $this->getDataWithoutDates($ecritures);
         $ecritures = array_reverse($ecritures);
 
         $chartjss = array_reverse($chartjss);
@@ -417,7 +438,7 @@ class GestionController extends CommonController
             }
         }
 
-        $chartjss = $this->getDataWithDates($ecritures);
+        $chartjss = $this->getDataWithoutDates($ecritures);
         $ecritures = array_reverse($ecritures);
 
         $chartjss = array_reverse($chartjss);
