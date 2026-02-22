@@ -74,6 +74,14 @@ class OperationRepository extends \Doctrine\ORM\EntityRepository
             return $query->getResult();
     }
 
+    function getAllDesc(){
+        $query = $this->createQueryBuilder('p')
+            ->orderBy('p.date', 'DESC')
+            ->getQuery();
+
+            return $query->getResult();
+    }
+
 
     function getAllForEmprunt($emprunt){
         $query = $this->createQueryBuilder('p')

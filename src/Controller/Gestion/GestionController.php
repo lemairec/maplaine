@@ -391,7 +391,7 @@ class GestionController extends CommonController
             }
         }
 
-        $chartjss = $this->getDataWithoutDates($ecritures);
+        $chartjss = $this->getDataWithDates($ecritures);
         $ecritures = array_reverse($ecritures);
 
         $chartjss = array_reverse($chartjss);
@@ -414,6 +414,7 @@ class GestionController extends CommonController
         $ecritures_futures = [];
         {
             $operations = $em->getRepository(Operation::class)->getAllForCompany($this->company);
+            //$operations = $em->getRepository(Operation::class)->getAllDesc();
             $value = 0;
             $l = count($operations);
             for($i = 0; $i < $l; ++$i){
