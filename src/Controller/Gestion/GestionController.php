@@ -774,6 +774,9 @@ class GestionController extends CommonController
             $facture = $em->getRepository(FactureFournisseur::class)->findOneById($facture_id);
             $operations = $em->getRepository(Operation::class)->getForFacture($facture);
         }
+        if($facture == NULL){
+            return $this->redirectToRoute('factures_fournisseurs');
+        }
         if($facture->type == "V"){
             $facture->type = "Vente";
             $facture->montantTTC = -$facture->montantTTC;
@@ -799,7 +802,7 @@ class GestionController extends CommonController
                 $facture->montantTTC = -$facture->montantTTC;
                 $facture->montantHT = -$facture->montantHT;
             } else {
-                $facture->type == "A";
+                $facture->type = "A";
             }
             $em->getRepository(FactureFournisseur::class)->save($facture);
 
