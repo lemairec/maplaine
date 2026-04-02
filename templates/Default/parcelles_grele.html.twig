@@ -31,10 +31,7 @@
         </tr>
         {% for parcelle in parcelles %}
             <tr>
-                <td>
-                    <a href="{{ url("parcelle", {'parcelle_id': parcelle.id}) }}">{{parcelle.completeName}}
-                    </a>
-                </td>
+                <td>{{ parcelle.completeName | my_path('parcelle', {'parcelle_id': parcelle.id}) | raw }}</td>
                 <td>
                     {{parcelle.name}}
                 </td>
