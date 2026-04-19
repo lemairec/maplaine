@@ -52,8 +52,23 @@ function formatHa(v) {
 }
 
 // ---- Init ----
+// ---- Logout ----
+document.getElementById('btn-logout').addEventListener('click', async () => {
+    await fetch('/api/logout', { method: 'POST' });
+    window.location.href = '/login';
+});
+
+// ---- Init ----
 async function init() {
-    const companies = await api('/api/companies');
+    // Load current user
+    const me = await api('/api/me');
+    document.getElementById('nav-username').textContent = me.username;
+
+    const allCompanies = await api('/api/companies');
+    // Filter to user's companies
+    const companies = me.company_ids.length > 0
+        ? allCompanies.filter(c => me.company_ids.includes(c.id))
+        : allCompanies;
     const sel = document.getElementById('sel-company');
     sel.innerHTML = companies.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
     if (companies.length > 0) {
@@ -234,14 +249,97 @@ function showParcelleDetail(id) {
         </div>
         <div class="d-flex gap-1 mt-2">
             <button class="btn btn-sm btn-outline-primary" id="btn-edit-parcelle"><i class="bi bi-pencil"></i> Modifier</button>
+            <button class="btn btn-sm btn-outline-success" id="btn-edit-contour"><i class="bi bi-bounding-box"></i> Contour</button>
             <button class="btn btn-sm btn-outline-danger" id="btn-delete-parcelle"><i class="bi bi-trash"></i> Supprimer</button>
             <button class="btn btn-sm btn-outline-secondary" id="btn-print-fiche"><i class="bi bi-printer"></i> Fiche</button>
         </div>
     `;
 
     document.getElementById('btn-edit-parcelle').addEventListener('click', () => openParcelleModal(p));
+    document.getElementById('btn-edit-contour').addEventListener('click', () => startEditContour(p));
     document.getElementById('btn-delete-parcelle').addEventListener('click', () => deleteParcelle(p.id));
     document.getElementById('btn-print-fiche').addEventListener('click', () => printFiche(p, pInterventions));
+}
+
+// ---- Edit Contour ----
+let editingContourParcelle = null;
+
+function startEditContour(p) {
+    editingContourParcelle = p;
+    // Hide the parcelle layer on the main layer so we can edit a copy
+    const existingLayer = parcelleLayerMap[p.id];
+    if (existingLayer) parcellesLayer.removeLayer(existingLayer);
+
+    drawLayer.clearLayers();
+
+    if (p.geoJson) {
+        // Load existing geoJSON into the editable drawLayer
+        let geojson;
+        try { geojson = JSON.parse(p.geoJson); } catch { return; }
+        const editLayer = L.geoJSON(geojson, {
+            style: { color: '#28a745', weight: 3, fillOpacity: 0.3 },
+        });
+        editLayer.eachLayer(l => drawLayer.addLayer(l));
+
+        // Enable edit mode on drawLayer
+        drawLayer.eachLayer(l => {
+            if (l.editing) l.editing.enable();
+        });
+    } else {
+        // No existing contour: enable draw mode to create one
+        map.addControl(drawControl);
+        map.once('draw:created', (e) => {
+            const layer = e.layer;
+            drawLayer.addLayer(layer);
+            // Enable editing on the newly drawn layer
+            if (layer.editing) layer.editing.enable();
+            try { map.removeControl(drawControl); } catch {}
+        });
+    }
+
+    // Show confirm/cancel bar
+    document.getElementById('edit-contour-bar').classList.remove('d-none');
+}
+
+document.getElementById('btn-contour-save').addEventListener('click', async () => {
+    if (!editingContourParcelle) return;
+    // Collect edited geometry
+    const layers = [];
+    drawLayer.eachLayer(l => layers.push(l));
+    if (layers.length === 0) return;
+
+    // Merge all layers into one GeoJSON geometry
+    const gj = layers[0].toGeoJSON();
+    const geomStr = JSON.stringify(gj.geometry);
+    const area = turf.area(gj) / 10000;
+
+    await api(`/api/parcelles/${editingContourParcelle.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ geoJson: geomStr, surface: parseFloat(area.toFixed(2)) }),
+    });
+
+    cleanupEditContour();
+    await loadAll();
+    // Re-select the parcelle
+    onParcelleClick(editingContourParcelle.id);
+    editingContourParcelle = null;
+});
+
+document.getElementById('btn-contour-cancel').addEventListener('click', () => {
+    cleanupEditContour();
+    // Restore parcelle layer
+    if (editingContourParcelle) {
+        renderMap();
+        highlightParcelle(editingContourParcelle.id);
+        editingContourParcelle = null;
+    }
+});
+
+function cleanupEditContour() {
+    drawLayer.eachLayer(l => { if (l.editing) l.editing.disable(); });
+    drawLayer.clearLayers();
+    try { map.removeControl(drawControl); } catch {}
+    document.getElementById('edit-contour-bar').classList.add('d-none');
 }
 
 // ---- Parcelle CRUD ----

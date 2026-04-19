@@ -18,6 +18,8 @@
     <div class="d-flex align-items-center gap-2">
         <select id="sel-company" class="form-select form-select-sm bg-dark text-white border-secondary"></select>
         <select id="sel-campagne" class="form-select form-select-sm bg-dark text-white border-secondary"></select>
+        <span id="nav-username" class="text-white small ms-2"></span>
+        <button class="btn btn-sm btn-outline-light" id="btn-logout" title="Déconnexion"><i class="bi bi-box-arrow-right"></i></button>
     </div>
 </nav>
 
@@ -86,6 +88,15 @@
 
     <!-- Map -->
     <div id="map" class="flex-grow-1"></div>
+</div>
+
+<!-- Edit Contour Bar -->
+<div id="edit-contour-bar" class="d-none position-fixed bottom-0 start-50 translate-middle-x mb-3" style="z-index:1100;">
+    <div class="d-flex gap-2 bg-dark text-white rounded-pill px-4 py-2 shadow">
+        <span class="me-2 d-flex align-items-center"><i class="bi bi-bounding-box me-1"></i> Édition du contour</span>
+        <button class="btn btn-sm btn-success" id="btn-contour-save"><i class="bi bi-check-lg"></i> Valider</button>
+        <button class="btn btn-sm btn-outline-light" id="btn-contour-cancel"><i class="bi bi-x-lg"></i> Annuler</button>
+    </div>
 </div>
 
 <!-- Modal: New/Edit Parcelle -->
