@@ -1,0 +1,61 @@
+/* ---- Layout ---- */
+#map { z-index: 0; }
+
+#sidebar { font-size: 0.9rem; }
+
+.parcelle-card {
+    cursor: pointer;
+    border-left: 5px solid #ccc;
+    padding: 6px 10px;
+    margin-bottom: 4px;
+    border-radius: 4px;
+    background: #fff;
+    transition: background 0.15s;
+}
+.parcelle-card:hover, .parcelle-card.active {
+    background: #e8f0fe;
+}
+.parcelle-card .culture-dot {
+    display: inline-block;
+    width: 12px; height: 12px;
+    border-radius: 50%;
+    margin-right: 6px;
+}
+
+.intervention-card {
+    cursor: pointer;
+    padding: 6px 10px;
+    margin-bottom: 4px;
+    border-radius: 4px;
+    background: #fff;
+    border-left: 4px solid #0d6efd;
+}
+.intervention-card:hover {
+    background: #e8f0fe;
+}
+
+.type-badge {
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: #fff;
+}
+.type-Semis { background: #28a745; }
+.type-Traitement { background: #dc3545; }
+.type-Fertilisation { background: #fd7e14; }
+.type-Récolte { background: #ffc107; color: #333; }
+.type-Travail\ du\ sol { background: #6f4e37; }
+.type-Irrigation { background: #0dcaf0; }
+.type-Autre { background: #6c757d; }
+
+/* Merge selection highlight */
+.parcelle-card.merge-selected {
+    background: #d1ecf1;
+    border-left-color: #0dcaf0 !important;
+}
+
+.fiche-section { margin-bottom: 12px; }
+.fiche-section h6 { border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+
+.produit-row { display: flex; gap: 6px; align-items: center; margin-bottom: 4px; }
+.produit-row select, .produit-row input { flex: 1; }
