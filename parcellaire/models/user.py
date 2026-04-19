@@ -17,6 +17,6 @@ class User(Base):
 
     companies = relationship(
         "Company",
-        secondary="company_user",
+        secondary="_fos_user_user_company",
         back_populates="users",
     )
