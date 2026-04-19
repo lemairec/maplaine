@@ -18,10 +18,17 @@ let mergeSelection = new Set();
 
 // ---- Leaflet ----
 const map = L.map('map').setView([46.6, 2.5], 6);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+
+const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors',
     maxZoom: 20,
-}).addTo(map);
+});
+const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+    attribution: '&copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics',
+    maxZoom: 19,
+});
+satLayer.addTo(map);
+L.control.layers({ 'Plan': osmLayer, 'Satellite': satLayer }).addTo(map);
 
 const parcellesLayer = L.layerGroup().addTo(map);
 const drawLayer = L.featureGroup().addTo(map);
@@ -79,6 +86,11 @@ async function init() {
         currentCompanyId = sel.value;
         await loadCampagnes();
     });
+
+    document.getElementById('sel-campagne').addEventListener('change', async () => {
+        currentCampagneId = document.getElementById('sel-campagne').value;
+        await loadAll();
+    });
 }
 
 async function loadCampagnes() {
@@ -86,13 +98,10 @@ async function loadCampagnes() {
     const sel = document.getElementById('sel-campagne');
     sel.innerHTML = campagnes.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
     if (campagnes.length > 0) {
+        sel.value = campagnes[0].id;
         currentCampagneId = campagnes[0].id;
         await loadAll();
     }
-    sel.addEventListener('change', async () => {
-        currentCampagneId = sel.value;
-        await loadAll();
-    });
 }
 
 async function loadAll() {

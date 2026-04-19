@@ -5,8 +5,8 @@ from database import Base
 company_user = Table(
     "_fos_user_user_company",
     Base.metadata,
-    Column("company_id", String(36), ForeignKey("company.id"), primary_key=True),
-    Column("user_id", String(36), ForeignKey("_fos_user.id"), primary_key=True),
+    Column("user_id", String(36), ForeignKey("company.id"), primary_key=True),
+    Column("company_id", String(36), ForeignKey("_fos_user.id"), primary_key=True),
 )
 
 

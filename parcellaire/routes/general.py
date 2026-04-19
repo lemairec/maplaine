@@ -18,6 +18,6 @@ def list_campagnes(company_id: str, db: Session = Depends(get_db)):
     return (
         db.query(Campagne)
         .filter(Campagne.company_id == company_id)
-        .order_by(Campagne.anneeStart.desc())
+        .order_by(Campagne.name.desc())
         .all()
     )
