@@ -11,7 +11,7 @@ class Ilot(Base):
     number = Column(Integer)
     surface = Column(Float)
     name = Column(String(255))
-    typeSol = Column("typeSol", String(255))
+    typeSol = Column("type_sol", String(255))
     comment = Column(String(255))
 
     company = relationship("Company")

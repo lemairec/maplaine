@@ -1,6 +1,8 @@
+from __future__ import annotations
+
+import datetime as dt
 from pydantic import BaseModel
-from typing import Optional
-from datetime import datetime
+from typing import Optional, Union
 
 
 # --- Company ---
@@ -138,7 +140,7 @@ class InterventionOut(BaseModel):
     id: str
     campagne_id: str
     company_id: str
-    datetime: Optional[datetime] = None
+    datetime: Union[dt.datetime, None] = None
     type: str
     surface: float
     name: Optional[str] = None
@@ -153,7 +155,7 @@ class InterventionOut(BaseModel):
 class InterventionCreate(BaseModel):
     campagne_id: str
     company_id: str
-    datetime: datetime
+    datetime: dt.datetime
     type: str
     surface: float
     name: Optional[str] = None

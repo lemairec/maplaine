@@ -10,7 +10,7 @@ class Intervention(Base):
     campagne_id = Column(String(36), ForeignKey("campagne.id"), nullable=False)
     company_id = Column(String(36), ForeignKey("company.id"), nullable=False)
     datetime = Column(DateTime)
-    datetimeEnd = Column("datetimeEnd", DateTime)
+    datetimeEnd = Column("datetime_end", DateTime)
     duration = Column(Time)
     type = Column(String(255))
     surface = Column(Float)
