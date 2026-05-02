@@ -375,17 +375,51 @@ function openParcelleModal(p = null) {
     new bootstrap.Modal(document.getElementById('modal-parcelle')).show();
 
     if (!isEdit) {
-        // Enable drawing mode
+        // Ajout d'une parcelle : lancer le dessin dès l'ouverture
+        document.getElementById('fp-surface').readOnly = true;
+        const btnSave = document.getElementById('btn-save-parcelle');
+        btnSave.disabled = true;
+
+        // Affichage dynamique de la surface
+        let surfaceLabel = document.getElementById('surface-live-label');
+        if (!surfaceLabel) {
+            surfaceLabel = document.createElement('div');
+            surfaceLabel.id = 'surface-live-label';
+            surfaceLabel.className = 'text-info small mt-1';
+            document.getElementById('fp-surface').parentElement.appendChild(surfaceLabel);
+        }
+        surfaceLabel.textContent = 'Dessinez le contour pour calculer la surface';
+
         map.addControl(drawControl);
+        let currentLayer = null;
+
+        // Dès qu'un polygone est dessiné
         map.once('draw:created', (e) => {
-            const layer = e.layer;
-            drawLayer.addLayer(layer);
-            const gj = layer.toGeoJSON();
+            currentLayer = e.layer;
+            drawLayer.addLayer(currentLayer);
+            if (currentLayer.editing) currentLayer.editing.enable();
+            updateSurface();
+            btnSave.disabled = false;
+            try { map.removeControl(drawControl); } catch {}
+
+            // Mise à jour dynamique lors de l'édition
+            currentLayer.on('edit', updateSurface);
+        });
+
+        // Mise à jour de la surface en direct
+        function updateSurface() {
+            if (!currentLayer) return;
+            const gj = currentLayer.toGeoJSON();
             document.getElementById('fp-geojson').value = JSON.stringify(gj.geometry);
-            // Auto-calculate surface from geometry in hectares
             const area = turf.area(gj) / 10000;
             document.getElementById('fp-surface').value = area.toFixed(2);
-        });
+            surfaceLabel.textContent = `Surface : ${area.toFixed(2)} ha`;
+        }
+    } else {
+        document.getElementById('fp-surface').readOnly = false;
+        const surfaceLabel = document.getElementById('surface-live-label');
+        if (surfaceLabel) surfaceLabel.remove();
+        document.getElementById('btn-save-parcelle').disabled = false;
     }
 }
 
@@ -700,6 +734,66 @@ document.getElementById('btn-save-intervention').addEventListener('click', async
 
 // ---- Navigation ----
 document.getElementById('btn-add-parcelle').addEventListener('click', () => openParcelleModal());
+// Nouveau comportement : lancer le dessin avant d'ouvrir la modale
+document.getElementById('btn-add-parcelle').removeEventListener?.('click', () => openParcelleModal());
+document.getElementById('btn-add-parcelle').addEventListener('click', startAddParcelleDraw);
+
+function startAddParcelleDraw() {
+    // Nettoyage éventuel
+    drawLayer.clearLayers();
+    try { map.removeControl(drawControl); } catch {}
+
+    // Affichage d'une info
+    let drawInfo = document.getElementById('draw-info-label');
+    if (!drawInfo) {
+        drawInfo = document.createElement('div');
+        drawInfo.id = 'draw-info-label';
+        drawInfo.className = 'alert alert-info position-absolute top-0 start-50 translate-middle-x mt-3';
+        drawInfo.style.zIndex = 2000;
+        drawInfo.textContent = 'Dessinez le contour de la nouvelle parcelle sur la carte';
+        document.body.appendChild(drawInfo);
+    } else {
+        drawInfo.style.display = '';
+    }
+
+    map.addControl(drawControl);
+    let currentLayer = null;
+
+    // Gestion annulation (Echap)
+    function cancelDraw(e) {
+        if (e.key === 'Escape') {
+            cleanupAddParcelleDraw();
+        }
+    }
+    document.addEventListener('keydown', cancelDraw);
+
+    // Dès qu'un polygone est dessiné
+    map.once('draw:created', (e) => {
+        currentLayer = e.layer;
+        drawLayer.addLayer(currentLayer);
+        if (currentLayer.editing) currentLayer.editing.enable();
+        try { map.removeControl(drawControl); } catch {}
+        drawInfo.style.display = 'none';
+        document.removeEventListener('keydown', cancelDraw);
+
+        // Calcul surface
+        const gj = currentLayer.toGeoJSON();
+        const area = turf.area(gj) / 10000;
+
+        // Ouvre la modale pré-remplie
+        openParcelleModal({
+            geoJson: JSON.stringify(gj.geometry),
+            surface: area.toFixed(2),
+        }, true);
+    });
+
+    function cleanupAddParcelleDraw() {
+        drawLayer.clearLayers();
+        try { map.removeControl(drawControl); } catch {}
+        drawInfo.style.display = 'none';
+        document.removeEventListener('keydown', cancelDraw);
+    }
+}
 document.getElementById('btn-back-parcelles').addEventListener('click', backToParcelles);
 
 function backToParcelles() {
