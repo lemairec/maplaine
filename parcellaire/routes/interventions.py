@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models.intervention import Intervention, InterventionParcelle, InterventionProduit
 from models.produit import Produit
-from schemas import InterventionOut, InterventionCreate, ProduitOut
+from schemas import InterventionOut, InterventionCreate, InterventionUpdate, ProduitOut
 
 router = APIRouter(prefix="/api", tags=["interventions"])
 
@@ -92,6 +92,42 @@ def create_intervention(data: InterventionCreate, db: Session = Depends(get_db))
     db.commit()
     db.refresh(intervention)
     return _intervention_to_out(intervention)
+
+
+@router.put("/interventions/{intervention_id}", response_model=InterventionOut)
+def update_intervention(intervention_id: str, data: InterventionUpdate, db: Session = Depends(get_db)):
+    i = db.query(Intervention).get(intervention_id)
+    if not i:
+        raise HTTPException(404, "Intervention not found")
+
+    i.datetime = data.datetime
+    i.type = data.type
+    i.surface = data.surface
+    i.name = data.name
+    i.comment = data.comment
+
+    db.query(InterventionParcelle).filter(InterventionParcelle.intervention_id == intervention_id).delete()
+    db.query(InterventionProduit).filter(InterventionProduit.intervention_id == intervention_id).delete()
+
+    for pl in data.parcelles:
+        db.add(InterventionParcelle(
+            id=str(uuid.uuid4()),
+            intervention_id=intervention_id,
+            parcelle_id=pl.parcelle_id,
+        ))
+
+    for pr in data.produits:
+        db.add(InterventionProduit(
+            id=str(uuid.uuid4()),
+            intervention_id=intervention_id,
+            produit_id=pr.produit_id,
+            name=pr.name,
+            quantity=pr.quantity,
+        ))
+
+    db.commit()
+    db.refresh(i)
+    return _intervention_to_out(i)
 
 
 @router.delete("/interventions/{intervention_id}")

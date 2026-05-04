@@ -15,7 +15,7 @@ pip3 install -r requirements.txt
 ## Lancement
 
 ```bash
-source venv/bin/activate
+cd ~/workspace/maplaine/parcellaire ; source venv/bin/activate
 uvicorn main:app --reload --port 8100
 ```
 

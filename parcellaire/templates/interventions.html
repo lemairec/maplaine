@@ -69,7 +69,7 @@
                         <th>Surface</th>
                         <th>Parcelles</th>
                         <th>Produits</th>
-                        <th style="width:60px;"></th>
+                        <th style="width:90px;"></th>
                     </tr>
                 </thead>
                 <tbody id="interventions-tbody">
@@ -229,6 +229,9 @@ function renderTable() {
             <td class="small">${parcelleNames}</td>
             <td class="small">${produitsList}</td>
             <td>
+                <button class="btn btn-sm btn-outline-primary btn-edit-intervention" data-id="${i.id}" title="Modifier">
+                    <i class="bi bi-pencil"></i>
+                </button>
                 <button class="btn btn-sm btn-outline-danger btn-delete-intervention" data-id="${i.id}" title="Supprimer">
                     <i class="bi bi-trash"></i>
                 </button>
@@ -236,6 +239,12 @@ function renderTable() {
         </tr>`;
     }).join('');
 
+    tbody.querySelectorAll('.btn-edit-intervention').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const inter = interventions.find(i => i.id === btn.dataset.id);
+            if (inter) openInterventionModal(inter);
+        });
+    });
     tbody.querySelectorAll('.btn-delete-intervention').forEach(btn => {
         btn.addEventListener('click', () => deleteIntervention(btn.dataset.id));
     });
@@ -244,21 +253,37 @@ function renderTable() {
 document.getElementById('filter-type').addEventListener('change', renderTable);
 
 // ---- CRUD ----
-document.getElementById('btn-add-intervention').addEventListener('click', () => openInterventionModal());
+let editingInterventionId = null;
 
-function openInterventionModal() {
-    document.getElementById('fi-date').value = new Date().toISOString().slice(0, 16);
-    document.getElementById('fi-name').value = '';
-    document.getElementById('fi-surface').value = '';
-    document.getElementById('fi-comment').value = '';
+document.getElementById('btn-add-intervention').addEventListener('click', () => openInterventionModal(null));
+
+function openInterventionModal(inter = null) {
+    editingInterventionId = inter ? inter.id : null;
+    document.querySelector('#modal-intervention .modal-title').textContent =
+        inter ? 'Modifier l\'intervention' : 'Nouvelle Intervention';
+
+    // Datetime: format for datetime-local input
+    if (inter && inter.datetime) {
+        const d = new Date(inter.datetime);
+        document.getElementById('fi-date').value = d.toISOString().slice(0, 16);
+    } else {
+        document.getElementById('fi-date').value = new Date().toISOString().slice(0, 16);
+    }
+
+    document.getElementById('fi-type').value = inter ? inter.type : 'Semis';
+    document.getElementById('fi-name').value = inter ? (inter.name || '') : '';
+    document.getElementById('fi-surface').value = inter ? (inter.surface ?? '') : '';
+    document.getElementById('fi-comment').value = inter ? (inter.comment || '') : '';
 
     const parcDiv = document.getElementById('fi-parcelles');
-    parcDiv.innerHTML = parcelles.map(p => `
+    parcDiv.innerHTML = parcelles.map(p => {
+        const checked = inter && inter.parcelle_ids && inter.parcelle_ids.includes(p.id) ? 'checked' : '';
+        return `
         <div class="form-check">
-            <input class="form-check-input fi-parc-check" type="checkbox" value="${p.id}" id="fip-${p.id}">
+            <input class="form-check-input fi-parc-check" type="checkbox" value="${p.id}" id="fip-${p.id}" ${checked}>
             <label class="form-check-label" for="fip-${p.id}">${p.complete_name || p.name || '—'} (${formatHa(p.surface)})</label>
-        </div>
-    `).join('');
+        </div>`;
+    }).join('');
 
     parcDiv.querySelectorAll('.fi-parc-check').forEach(cb => {
         cb.addEventListener('change', () => {
@@ -272,10 +297,16 @@ function openInterventionModal() {
     });
 
     document.getElementById('fi-produits').innerHTML = '';
+    // Pre-fill existing produits when editing
+    if (inter && inter.produits) {
+        inter.produits.forEach(pr => addProduitRow(pr.produit_id, pr.quantity));
+    }
     new bootstrap.Modal(document.getElementById('modal-intervention')).show();
 }
 
-document.getElementById('btn-add-produit-row').addEventListener('click', () => {
+document.getElementById('btn-add-produit-row').addEventListener('click', () => addProduitRow());
+
+function addProduitRow(produitId = '', quantity = '') {
     const container = document.getElementById('fi-produits');
     const row = document.createElement('div');
     row.className = 'produit-row';
@@ -287,9 +318,11 @@ document.getElementById('btn-add-produit-row').addEventListener('click', () => {
         <input class="form-control form-control-sm fi-prod-qty" type="number" step="0.01" placeholder="Quantité" />
         <button class="btn btn-sm btn-outline-danger fi-prod-del"><i class="bi bi-x"></i></button>
     `;
+    row.querySelector('.fi-prod-sel').value = produitId;
+    row.querySelector('.fi-prod-qty').value = quantity;
     row.querySelector('.fi-prod-del').addEventListener('click', () => row.remove());
     container.appendChild(row);
-});
+}
 
 document.getElementById('btn-save-intervention').addEventListener('click', async () => {
     const checkedParcelles = [...document.querySelectorAll('.fi-parc-check:checked')].map(c => ({
@@ -306,8 +339,6 @@ document.getElementById('btn-save-intervention').addEventListener('click', async
     }).filter(p => p.produit_id);
 
     const payload = {
-        campagne_id: currentCampagneId,
-        company_id: currentCompanyId,
         datetime: document.getElementById('fi-date').value,
         type: document.getElementById('fi-type').value,
         surface: parseFloat(document.getElementById('fi-surface').value) || 0,
@@ -317,7 +348,16 @@ document.getElementById('btn-save-intervention').addEventListener('click', async
         produits: produitsData,
     };
 
-    await api('/api/interventions', { method: 'POST', body: JSON.stringify(payload) });
+    if (editingInterventionId) {
+        await api(`/api/interventions/${editingInterventionId}`, { method: 'PUT', body: JSON.stringify(payload) });
+    } else {
+        await api('/api/interventions', { method: 'POST', body: JSON.stringify({
+            campagne_id: currentCampagneId,
+            company_id: currentCompanyId,
+            ...payload,
+        }) });
+    }
+    editingInterventionId = null;
     bootstrap.Modal.getInstance(document.getElementById('modal-intervention')).hide();
     await loadAll();
 });
