@@ -113,7 +113,6 @@ async function loadAll() {
         api(`/api/campagnes/${currentCampagneId}/interventions`),
     ]);
     renderParcelles();
-    renderInterventions();
     renderMap();
 }
 
@@ -218,7 +217,6 @@ function showParcelleDetail(id) {
     if (!p) return;
 
     document.getElementById('tab-parcelles').classList.add('d-none');
-    document.getElementById('tab-interventions').classList.add('d-none');
     document.getElementById('panel-parcelle').classList.remove('d-none');
 
     // Get interventions for this parcelle
@@ -612,130 +610,7 @@ document.getElementById('btn-do-merge').addEventListener('click', async () => {
 
 document.getElementById('btn-cancel-merge').addEventListener('click', () => setMode('select'));
 
-// ---- Interventions ----
-function renderInterventions() {
-    const container = document.getElementById('interventions-list');
-    if (interventions.length === 0) {
-        container.innerHTML = '<p class="text-muted small">Aucune intervention</p>';
-        return;
-    }
-    container.innerHTML = interventions.map(i => `
-        <div class="intervention-card" data-id="${i.id}">
-            <div class="d-flex justify-content-between">
-                <span><span class="type-badge type-${i.type}">${i.type}</span> ${i.name || ''}</span>
-                <span class="small text-muted">${formatDate(i.datetime)}</span>
-            </div>
-            <div class="small text-muted">${formatHa(i.surface)} · ${i.parcelle_ids.length} parcelles</div>
-            ${i.produits.length > 0 ? '<div class="small">' + i.produits.map(pr =>
-                `${pr.name}: ${pr.quantity} ${pr.unity || ''}`
-            ).join(', ') + '</div>' : ''}
-        </div>
-    `).join('');
-
-    container.querySelectorAll('.intervention-card').forEach(el => {
-        el.addEventListener('click', () => {
-            const inter = interventions.find(i => i.id === el.dataset.id);
-            if (inter && inter.parcelle_ids.length > 0) {
-                // Highlight related parcelles on map
-                Object.entries(parcelleLayerMap).forEach(([pid, layer]) => {
-                    layer.setStyle({
-                        weight: inter.parcelle_ids.includes(pid) ? 4 : 2,
-                        color: inter.parcelle_ids.includes(pid) ? '#ff0' : '#333',
-                    });
-                });
-            }
-        });
-    });
-}
-
-// ---- Intervention CRUD ----
-document.getElementById('btn-add-intervention').addEventListener('click', () => openInterventionModal());
-
-function openInterventionModal() {
-    document.getElementById('fi-date').value = new Date().toISOString().slice(0, 16);
-    document.getElementById('fi-name').value = '';
-    document.getElementById('fi-surface').value = '';
-    document.getElementById('fi-comment').value = '';
-
-    // Parcelles checkboxes
-    const parcDiv = document.getElementById('fi-parcelles');
-    parcDiv.innerHTML = parcelles.map(p => `
-        <div class="form-check">
-            <input class="form-check-input fi-parc-check" type="checkbox" value="${p.id}" id="fip-${p.id}">
-            <label class="form-check-label" for="fip-${p.id}">${p.complete_name || p.name || '—'} (${formatHa(p.surface)})</label>
-        </div>
-    `).join('');
-
-    // Auto-compute surface from checked parcelles
-    parcDiv.querySelectorAll('.fi-parc-check').forEach(cb => {
-        cb.addEventListener('change', () => {
-            const checked = [...parcDiv.querySelectorAll('.fi-parc-check:checked')];
-            const totalS = checked.reduce((s, c) => {
-                const p = parcelles.find(x => x.id === c.value);
-                return s + (p?.surface || 0);
-            }, 0);
-            document.getElementById('fi-surface').value = totalS.toFixed(2);
-        });
-    });
-
-    // Produits
-    document.getElementById('fi-produits').innerHTML = '';
-
-    new bootstrap.Modal(document.getElementById('modal-intervention')).show();
-}
-
-document.getElementById('btn-add-produit-row').addEventListener('click', () => {
-    const container = document.getElementById('fi-produits');
-    const row = document.createElement('div');
-    row.className = 'produit-row';
-    row.innerHTML = `
-        <select class="form-select form-select-sm fi-prod-sel">
-            <option value="">— Produit —</option>
-            ${produits.map(p => `<option value="${p.id}" data-name="${p.name}">${p.name} (${p.price}€/${p.unity || 'u'})</option>`).join('')}
-        </select>
-        <input class="form-control form-control-sm fi-prod-qty" type="number" step="0.01" placeholder="Quantité" />
-        <button class="btn btn-sm btn-outline-danger fi-prod-del"><i class="bi bi-x"></i></button>
-    `;
-    row.querySelector('.fi-prod-del').addEventListener('click', () => row.remove());
-    container.appendChild(row);
-});
-
-document.getElementById('btn-save-intervention').addEventListener('click', async () => {
-    const checkedParcelles = [...document.querySelectorAll('.fi-parc-check:checked')].map(c => ({
-        parcelle_id: c.value,
-    }));
-
-    const produitRows = [...document.querySelectorAll('.produit-row')];
-    const produitsData = produitRows.map(row => {
-        const sel = row.querySelector('.fi-prod-sel');
-        return {
-            produit_id: sel.value,
-            name: sel.options[sel.selectedIndex]?.dataset?.name || sel.options[sel.selectedIndex]?.text || '',
-            quantity: parseFloat(row.querySelector('.fi-prod-qty').value) || 0,
-        };
-    }).filter(p => p.produit_id);
-
-    const payload = {
-        campagne_id: currentCampagneId,
-        company_id: currentCompanyId,
-        datetime: document.getElementById('fi-date').value,
-        type: document.getElementById('fi-type').value,
-        surface: parseFloat(document.getElementById('fi-surface').value) || 0,
-        name: document.getElementById('fi-name').value || null,
-        comment: document.getElementById('fi-comment').value || null,
-        parcelles: checkedParcelles,
-        produits: produitsData,
-    };
-
-    await api('/api/interventions', { method: 'POST', body: JSON.stringify(payload) });
-    bootstrap.Modal.getInstance(document.getElementById('modal-intervention')).hide();
-    await loadAll();
-});
-
 // ---- Navigation ----
-document.getElementById('btn-add-parcelle').addEventListener('click', () => openParcelleModal());
-// Nouveau comportement : lancer le dessin avant d'ouvrir la modale
-document.getElementById('btn-add-parcelle').removeEventListener?.('click', () => openParcelleModal());
 document.getElementById('btn-add-parcelle').addEventListener('click', startAddParcelleDraw);
 
 function startAddParcelleDraw() {

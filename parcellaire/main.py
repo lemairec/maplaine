@@ -59,3 +59,7 @@ def login_page(request: Request):
 @app.get("/")
 def index(request: Request):
     return templates.TemplateResponse("index.html", {"request": request})
+
+@app.get("/interventions")
+def interventions_page(request: Request):
+    return templates.TemplateResponse("interventions.html", {"request": request})

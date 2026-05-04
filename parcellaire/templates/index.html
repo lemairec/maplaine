@@ -17,6 +17,7 @@
     <span class="navbar-brand mb-0 h1"><i class="bi bi-map"></i> Gestion Parcellaire</span>
     <div class="d-flex align-items-center gap-2">
         <a href="/import" class="btn btn-sm btn-outline-light" title="Import TeléPAC"><i class="bi bi-file-earmark-arrow-up"></i> Import TeléPAC</a>
+        <a href="/interventions" class="btn btn-sm btn-outline-light" title="Interventions"><i class="bi bi-journal-text"></i> Interventions</a>
         <select id="sel-company" class="form-select form-select-sm bg-dark text-white border-secondary"></select>
         <select id="sel-campagne" class="form-select form-select-sm bg-dark text-white border-secondary"></select>
         <span id="nav-username" class="text-white small ms-2"></span>
@@ -31,9 +32,6 @@
         <ul class="nav nav-tabs nav-fill" id="sidebar-tabs">
             <li class="nav-item">
                 <a class="nav-link active" data-tab="tab-parcelles" href="#"><i class="bi bi-grid-3x3"></i> Parcelles</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" data-tab="tab-interventions" href="#"><i class="bi bi-journal-text"></i> Interventions</a>
             </li>
         </ul>
 
@@ -67,16 +65,7 @@
             <div class="mt-2 small text-muted" id="parcelles-summary"></div>
         </div>
 
-        <!-- Interventions list -->
-        <div id="tab-interventions" class="tab-content p-2 d-none">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <h6 class="mb-0">Interventions</h6>
-                <button class="btn btn-sm btn-success" id="btn-add-intervention" title="Nouvelle intervention">
-                    <i class="bi bi-plus-lg"></i>
-                </button>
-            </div>
-            <div id="interventions-list"></div>
-        </div>
+
 
         <!-- Detail panel (parcelle) -->
         <div id="panel-parcelle" class="tab-content p-2 d-none">
@@ -125,50 +114,6 @@
   </div>
 </div>
 
-<!-- Modal: New Intervention -->
-<div class="modal fade" id="modal-intervention" tabindex="-1">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content">
-      <div class="modal-header"><h5 class="modal-title">Nouvelle Intervention</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-      <div class="modal-body">
-        <form id="form-intervention">
-          <div class="row mb-2">
-            <div class="col"><label class="form-label">Type</label>
-              <select class="form-select" id="fi-type">
-                <option value="Semis">Semis</option>
-                <option value="Travail du sol">Travail du sol</option>
-                <option value="Traitement">Traitement</option>
-                <option value="Fertilisation">Fertilisation</option>
-                <option value="Récolte">Récolte</option>
-                <option value="Irrigation">Irrigation</option>
-                <option value="Autre">Autre</option>
-              </select>
-            </div>
-            <div class="col"><label class="form-label">Date</label><input class="form-control" id="fi-date" type="datetime-local" required /></div>
-          </div>
-          <div class="row mb-2">
-            <div class="col"><label class="form-label">Nom / Description</label><input class="form-control" id="fi-name" /></div>
-            <div class="col"><label class="form-label">Surface (ha)</label><input class="form-control" id="fi-surface" type="number" step="0.01" /></div>
-          </div>
-          <div class="mb-2"><label class="form-label">Commentaire</label><textarea class="form-control" id="fi-comment" rows="2"></textarea></div>
-          <hr/>
-          <h6>Parcelles concernées</h6>
-          <div id="fi-parcelles" class="mb-2"></div>
-          <hr/>
-          <h6>Produits utilisés</h6>
-          <div id="fi-produits"></div>
-          <button type="button" class="btn btn-sm btn-outline-secondary mt-1" id="btn-add-produit-row">
-            <i class="bi bi-plus"></i> Ajouter un produit
-          </button>
-        </form>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-        <button class="btn btn-primary" id="btn-save-intervention">Enregistrer</button>
-      </div>
-    </div>
-  </div>
-</div>
 
 <!-- Modal: Split -->
 <div class="modal fade" id="modal-split" tabindex="-1">
