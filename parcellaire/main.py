@@ -1,12 +1,13 @@
 from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import RedirectResponse
+from fastapi.responses import RedirectResponse, JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from routes.general import router as general_router
 from routes.parcelles import router as parcelles_router
 from routes.interventions import router as interventions_router
 from routes.auth import router as auth_router
+from routes.import_telepac import router as import_telepac_router
 from auth import get_session_user_id
 
 app = FastAPI(title="Gestion Parcellaire")
@@ -34,10 +35,20 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(AuthMiddleware)
 
+# Ensure unhandled exceptions always return JSON (never HTML)
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    import traceback
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"{type(exc).__name__}: {exc}"},
+    )
+
 app.include_router(auth_router)
 app.include_router(general_router)
 app.include_router(parcelles_router)
 app.include_router(interventions_router)
+app.include_router(import_telepac_router)
 
 
 @app.get("/login")

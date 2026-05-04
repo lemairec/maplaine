@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Import TeléPAC – Gestion Parcellaire</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" />
+    <style>
+        body { background: #f8f9fa; }
+        .drop-zone {
+            border: 2px dashed #6c757d;
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color .2s, background .2s;
+        }
+        .drop-zone.dragover, .drop-zone:hover {
+            border-color: #0d6efd;
+            background: #e8f0fe;
+        }
+        .badge-culture { font-family: monospace; font-size: .85em; }
+        #preview-section { display: none; }
+        .table-ilot thead th { background: #343a40; color: #fff; }
+        .culture-ok   { color: #198754; }
+        .culture-warn { color: #dc3545; }
+    </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar navbar-dark bg-dark px-3">
+    <span class="navbar-brand mb-0 h1"><i class="bi bi-map"></i> Gestion Parcellaire</span>
+    <div class="d-flex gap-2">
+        <a href="/" class="btn btn-sm btn-outline-light"><i class="bi bi-arrow-left"></i> Retour à la carte</a>
+        <button class="btn btn-sm btn-outline-light" id="btn-logout" title="Déconnexion"><i class="bi bi-box-arrow-right"></i></button>
+    </div>
+</nav>
+
+<div class="container py-4" style="max-width:900px;">
+    <h4 class="mb-1"><i class="bi bi-file-earmark-arrow-up"></i> Import dossier TeléPAC</h4>
+    <p class="text-muted small mb-4">Importez un fichier XML exporté depuis TeléPAC pour créer automatiquement les îlots et parcelles.</p>
+
+    <!-- Société / Campagne -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Société</label>
+                    <select class="form-select" id="sel-company"></select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-semibold">Campagne de destination</label>
+                    <select class="form-select" id="sel-campagne"></select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Zone de dépôt -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <label class="form-label fw-semibold">Fichier XML TeléPAC</label>
+            <div class="drop-zone" id="drop-zone">
+                <i class="bi bi-cloud-upload fs-2 text-secondary d-block mb-2"></i>
+                <span id="drop-label">Glisser-déposer un fichier XML ici, ou cliquer pour sélectionner</span>
+                <input type="file" id="file-input" accept=".xml" class="d-none" />
+            </div>
+            <div class="d-grid mt-3">
+                <button class="btn btn-primary" id="btn-preview" disabled>
+                    <i class="bi bi-eye"></i> Prévisualiser
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Prévisualisation -->
+    <div id="preview-section">
+        <!-- Info producteur -->
+        <div class="card mb-3">
+            <div class="card-header fw-semibold"><i class="bi bi-person-badge"></i> Informations producteur</div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-sm-4"><span class="text-muted">Exploitation :</span></div>
+                    <div class="col-sm-8 fw-semibold" id="info-exploitation"></div>
+                </div>
+                <div class="row">
+                    <div class="col-sm-4"><span class="text-muted">PACAGE :</span></div>
+                    <div class="col-sm-8" id="info-pacage"></div>
+                </div>
+                <div class="row">
+                    <div class="col-sm-4"><span class="text-muted">Campagne fichier :</span></div>
+                    <div class="col-sm-8" id="info-campagne"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistiques -->
+        <div class="row g-3 mb-3">
+            <div class="col-6 col-md-3">
+                <div class="card text-center">
+                    <div class="card-body py-2">
+                        <div class="fs-3 fw-bold text-primary" id="stat-ilots">-</div>
+                        <div class="small text-muted">Îlots</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card text-center">
+                    <div class="card-body py-2">
+                        <div class="fs-3 fw-bold text-success" id="stat-parcelles">-</div>
+                        <div class="small text-muted">Parcelles</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card text-center">
+                    <div class="card-body py-2">
+                        <div class="fs-3 fw-bold text-success" id="stat-cult-ok">-</div>
+                        <div class="small text-muted">Cultures trouvées</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card text-center">
+                    <div class="card-body py-2">
+                        <div class="fs-3 fw-bold text-danger" id="stat-cult-ko">-</div>
+                        <div class="small text-muted">Cultures inconnues</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Alerte cultures inconnues -->
+        <div id="alert-unmatched" class="alert alert-warning d-none">
+            <i class="bi bi-exclamation-triangle"></i>
+            Les cultures suivantes ne correspondent à aucune culture de votre société (elles seront importées sans culture assignée) :
+            <span id="unmatched-codes" class="fw-semibold"></span>
+        </div>
+
+        <!-- Options d'import -->
+        <div class="card mb-3">
+            <div class="card-body">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="chk-replace" />
+                    <label class="form-check-label" for="chk-replace">
+                        Désactiver les parcelles existantes de la campagne sélectionnée avant l'import
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <!-- Détail des îlots / parcelles -->
+        <div class="card mb-4">
+            <div class="card-header fw-semibold"><i class="bi bi-grid-3x3"></i> Détail des îlots et parcelles</div>
+            <div class="card-body p-0">
+                <div id="ilots-detail"></div>
+            </div>
+        </div>
+
+        <!-- Bouton import -->
+        <div class="d-grid gap-2">
+            <button class="btn btn-success btn-lg" id="btn-import">
+                <i class="bi bi-check2-circle"></i> Importer dans la campagne
+            </button>
+        </div>
+    </div>
+
+    <!-- Résultat -->
+    <div id="result-section" class="d-none mt-4">
+        <div class="alert alert-success">
+            <h5><i class="bi bi-check-circle-fill"></i> Import réussi !</h5>
+            <p id="result-msg" class="mb-1"></p>
+            <div id="result-unmatched" class="d-none small text-warning">
+                <i class="bi bi-exclamation-triangle"></i>
+                Cultures non trouvées (parcelles sans culture assignée) :
+                <span id="result-unmatched-codes"></span>
+            </div>
+        </div>
+        <div class="d-flex gap-2">
+            <a href="/" class="btn btn-primary"><i class="bi bi-map"></i> Voir la carte</a>
+            <button class="btn btn-outline-secondary" id="btn-new-import">
+                <i class="bi bi-arrow-repeat"></i> Nouvel import
+            </button>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// ---- State ----
+let selectedFile = null;
+let previewData = null;
+
+// ---- Init ----
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadCompanies();
+    setupDropZone();
+    setupEvents();
+    checkLogout();
+});
+
+// ---- Auth ----
+function checkLogout() {
+    document.getElementById('btn-logout').addEventListener('click', async () => {
+        await fetch('/api/logout', { method: 'POST' });
+        location.href = '/login';
+    });
+}
+
+// ---- Companies & Campagnes ----
+async function loadCompanies() {
+    const resp = await fetch('/api/companies');
+    const companies = await resp.json();
+    const sel = document.getElementById('sel-company');
+    sel.innerHTML = companies.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    if (companies.length > 0) await loadCampagnes(companies[0].id);
+    sel.addEventListener('change', () => loadCampagnes(sel.value));
+}
+
+async function loadCampagnes(companyId) {
+    const resp = await fetch(`/api/companies/${companyId}/campagnes`);
+    const campagnes = await resp.json();
+    const sel = document.getElementById('sel-campagne');
+    sel.innerHTML = campagnes.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+}
+
+// ---- Drop zone ----
+function setupDropZone() {
+    const zone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+
+    zone.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files[0]) setFile(fileInput.files[0]);
+    });
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop', e => {
+        e.preventDefault();
+        zone.classList.remove('dragover');
+        const f = e.dataTransfer.files[0];
+        if (f) setFile(f);
+    });
+}
+
+function setFile(file) {
+    selectedFile = file;
+    document.getElementById('drop-label').textContent = `Fichier sélectionné : ${file.name}`;
+    document.getElementById('btn-preview').disabled = false;
+    document.getElementById('preview-section').style.display = 'none';
+    document.getElementById('result-section').classList.add('d-none');
+}
+
+// ---- Events ----
+function setupEvents() {
+    document.getElementById('btn-preview').addEventListener('click', doPreview);
+    document.getElementById('btn-import').addEventListener('click', doImport);
+    document.getElementById('btn-new-import').addEventListener('click', () => {
+        selectedFile = null;
+        previewData = null;
+        document.getElementById('drop-label').textContent = 'Glisser-déposer un fichier XML ici, ou cliquer pour sélectionner';
+        document.getElementById('file-input').value = '';
+        document.getElementById('btn-preview').disabled = true;
+        document.getElementById('preview-section').style.display = 'none';
+        document.getElementById('result-section').classList.add('d-none');
+    });
+}
+
+// ---- Preview ----
+async function doPreview() {
+    if (!selectedFile) return;
+    const btn = document.getElementById('btn-preview');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Analyse…';
+
+    try {
+        const companyId = document.getElementById('sel-company').value;
+        const fd = new FormData();
+        fd.append('file', selectedFile);
+        fd.append('company_id', companyId);
+
+        const resp = await fetch('/api/import/telepac/preview', { method: 'POST', body: fd });
+        if (!resp.ok) {
+            let msg = `Erreur ${resp.status}`;
+            try { const err = await resp.json(); msg = err.detail || msg; } catch {}
+            throw new Error(msg);
+        }
+        previewData = await resp.json();
+        renderPreview(previewData);
+        document.getElementById('preview-section').style.display = 'block';
+        document.getElementById('preview-section').scrollIntoView({ behavior: 'smooth' });
+    } catch (e) {
+        alert('Erreur : ' + e.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-eye"></i> Prévisualiser';
+    }
+}
+
+function renderPreview(data) {
+    document.getElementById('info-exploitation').textContent = data.exploitation || '—';
+    document.getElementById('info-pacage').textContent = data.pacage || '—';
+    document.getElementById('info-campagne').textContent = data.campagne_label || '—';
+
+    document.getElementById('stat-ilots').textContent = data.stats.nb_ilots;
+    document.getElementById('stat-parcelles').textContent = data.stats.nb_parcelles;
+    document.getElementById('stat-cult-ok').textContent = data.stats.nb_cultures_matched;
+    document.getElementById('stat-cult-ko').textContent = data.stats.nb_cultures_unmatched;
+
+    const unmatched = Object.entries(data.culture_map)
+        .filter(([, v]) => !v)
+        .map(([k]) => k);
+
+    const alertUnmatched = document.getElementById('alert-unmatched');
+    if (unmatched.length > 0) {
+        alertUnmatched.classList.remove('d-none');
+        document.getElementById('unmatched-codes').textContent = unmatched.join(', ');
+    } else {
+        alertUnmatched.classList.add('d-none');
+    }
+
+    // Détail tableau
+    const container = document.getElementById('ilots-detail');
+    container.innerHTML = data.ilots.map(ilot => {
+        const rows = ilot.parcelles.map(p => {
+            const cult = data.culture_map[p.code_culture];
+            const cultCell = cult
+                ? `<span class="culture-ok"><i class="bi bi-check-circle-fill"></i> ${cult.name}</span><span class="badge-culture badge bg-secondary ms-1">${p.code_culture}</span>`
+                : (p.code_culture
+                    ? `<span class="culture-warn"><i class="bi bi-exclamation-circle-fill"></i> Inconnue</span><span class="badge-culture badge bg-danger ms-1">${p.code_culture}</span>`
+                    : '<span class="text-muted">—</span>');
+            return `<tr>
+                <td class="ps-4">P${p.numero_parcelle}</td>
+                <td>${p.surface_ha.toFixed(2)} ha</td>
+                <td>${cultCell}</td>
+                <td class="text-muted small">${ilot.commune}</td>
+            </tr>`;
+        }).join('');
+
+        const totalHa = ilot.parcelles.reduce((s, p) => s + p.surface_ha, 0).toFixed(2);
+
+        return `<table class="table table-sm table-bordered mb-0 table-ilot">
+            <thead>
+                <tr>
+                    <th colspan="4" class="py-2 ps-3">
+                        <i class="bi bi-bounding-box"></i>
+                        Îlot ${ilot.numero_ilot}
+                        <small class="fw-normal ms-2 opacity-75">réf. ${ilot.numero_reference}</small>
+                        <span class="float-end fw-normal">${ilot.parcelles.length} parcelle(s) &mdash; ${totalHa} ha</span>
+                    </th>
+                </tr>
+                <tr class="table-secondary">
+                    <th style="width:80px">Parcelle</th>
+                    <th style="width:100px">Surface</th>
+                    <th>Culture</th>
+                    <th style="width:120px">Commune</th>
+                </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+        </table>`;
+    }).join('<div class="border-top"></div>');
+}
+
+// ---- Import ----
+async function doImport() {
+    if (!previewData) return;
+    const btn = document.getElementById('btn-import');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Import en cours…';
+
+    try {
+        const companyId = document.getElementById('sel-company').value;
+        const campagneId = document.getElementById('sel-campagne').value;
+        const replaceExisting = document.getElementById('chk-replace').checked;
+
+        const payload = {
+            company_id: companyId,
+            campagne_id: campagneId,
+            replace_existing: replaceExisting,
+            ilots: previewData.ilots.map(ilot => ({
+                numero_ilot: ilot.numero_ilot,
+                numero_reference: ilot.numero_reference,
+                commune: ilot.commune,
+                parcelles: ilot.parcelles.map(p => ({
+                    numero_parcelle: p.numero_parcelle,
+                    code_culture: p.code_culture,
+                    surface_ha: p.surface_ha,
+                    geojson: p.geojson,
+                })),
+            })),
+        };
+
+        const resp = await fetch('/api/import/telepac/confirm', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        if (!resp.ok) {
+            let msg = `Erreur ${resp.status}`;
+            try { const err = await resp.json(); msg = err.detail || msg; } catch {}
+            throw new Error(msg);
+        }
+        const result = await resp.json();
+
+        document.getElementById('preview-section').style.display = 'none';
+        document.getElementById('result-section').classList.remove('d-none');
+        document.getElementById('result-msg').textContent =
+            `${result.created_ilots} îlot(s) créé(s), ${result.created_parcelles} parcelle(s) importée(s).`;
+
+        if (result.unmatched_cultures && result.unmatched_cultures.length > 0) {
+            document.getElementById('result-unmatched').classList.remove('d-none');
+            document.getElementById('result-unmatched-codes').textContent = result.unmatched_cultures.join(', ');
+        }
+        document.getElementById('result-section').scrollIntoView({ behavior: 'smooth' });
+    } catch (e) {
+        alert('Erreur : ' + e.message);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="bi bi-check2-circle"></i> Importer dans la campagne';
+    }
+}
+</script>
+</body>
+</html>
