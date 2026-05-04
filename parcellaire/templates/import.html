@@ -25,8 +25,12 @@
 </style>
 {% endblock %}
 
-{% block navbar_links %}
-<a href="/" class="btn btn-sm btn-outline-light"><i class="bi bi-arrow-left"></i> Retour à la carte</a>
+{% block nav_active_import %}btn-light{% endblock %}
+
+{% block navbar_selectors %}
+<select id="sel-company" class="form-select form-select-sm bg-dark text-white border-secondary"></select>
+<select id="sel-campagne" class="form-select form-select-sm bg-dark text-white border-secondary"></select>
+<span id="nav-username" class="text-white small ms-2"></span>
 {% endblock %}
 
 {% block content %}
@@ -34,22 +38,6 @@
 <div class="container py-4" style="max-width:900px;">
     <h4 class="mb-1"><i class="bi bi-file-earmark-arrow-up"></i> Import dossier TeléPAC</h4>
     <p class="text-muted small mb-4">Importez un fichier XML exporté depuis TeléPAC pour créer automatiquement les îlots et parcelles.</p>
-
-    <!-- Société / Campagne -->
-    <div class="card mb-4">
-        <div class="card-body">
-            <div class="row g-3">
-                <div class="col-md-6">
-                    <label class="form-label fw-semibold">Société</label>
-                    <select class="form-select" id="sel-company"></select>
-                </div>
-                <div class="col-md-6">
-                    <label class="form-label fw-semibold">Campagne de destination</label>
-                    <select class="form-select" id="sel-campagne"></select>
-                </div>
-            </div>
-        </div>
-    </div>
 
     <!-- Zone de dépôt -->
     <div class="card mb-4">
@@ -190,6 +178,7 @@ let previewData = null;
 
 // ---- Init ----
 document.addEventListener('DOMContentLoaded', async () => {
+    await loadUser();
     await loadCompanies();
     setupDropZone();
     setupEvents();
@@ -197,6 +186,16 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 // ---- Auth ----
+async function loadUser() {
+    try {
+        const resp = await fetch('/api/me');
+        if (resp.ok) {
+            const me = await resp.json();
+            document.getElementById('nav-username').textContent = me.username;
+        }
+    } catch {}
+}
+
 function checkLogout() {
     document.getElementById('btn-logout').addEventListener('click', async () => {
         await fetch('/api/logout', { method: 'POST' });

@@ -12,9 +12,13 @@
 
 <!-- Navbar -->
 <nav class="navbar navbar-dark bg-dark px-3">
-    {% block navbar_brand %}<span class="navbar-brand mb-0 h1"><i class="bi bi-map"></i> Gestion Parcellaire</span>{% endblock %}
+    <a class="navbar-brand mb-0 h1 text-decoration-none" href="/"><i class="bi bi-map"></i> Gestion Parcellaire</a>
     <div class="d-flex align-items-center gap-2">
-        {% block navbar_links %}{% endblock %}
+        <a href="/" class="btn btn-sm {% block nav_active_carte %}btn-outline-light{% endblock %}"><i class="bi bi-map"></i> Carte</a>
+        <a href="/import" class="btn btn-sm {% block nav_active_import %}btn-outline-light{% endblock %}"><i class="bi bi-file-earmark-arrow-up"></i> Import</a>
+        <a href="/interventions" class="btn btn-sm {% block nav_active_interventions %}btn-outline-light{% endblock %}"><i class="bi bi-journal-text"></i> Interventions</a>
+        <div class="vr mx-1" style="opacity:.3;"></div>
+        {% block navbar_selectors %}{% endblock %}
         <button class="btn btn-sm btn-outline-light" id="btn-logout" title="Déconnexion"><i class="bi bi-box-arrow-right"></i></button>
     </div>
 </nav>

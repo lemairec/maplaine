@@ -17,10 +17,9 @@
 </style>
 {% endblock %}
 
-{% block navbar_brand %}<span class="navbar-brand mb-0 h1"><i class="bi bi-journal-text"></i> Interventions</span>{% endblock %}
+{% block nav_active_interventions %}btn-light{% endblock %}
 
-{% block navbar_links %}
-<a href="/" class="btn btn-sm btn-outline-light"><i class="bi bi-map"></i> Carte</a>
+{% block navbar_selectors %}
 <select id="sel-company" class="form-select form-select-sm bg-dark text-white border-secondary"></select>
 <select id="sel-campagne" class="form-select form-select-sm bg-dark text-white border-secondary"></select>
 <span id="nav-username" class="text-white small ms-2"></span>
