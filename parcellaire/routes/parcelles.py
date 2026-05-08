@@ -6,6 +6,7 @@ from database import get_db
 from models.parcelle import Parcelle
 from models.culture import Culture
 from models.ilot import Ilot
+from models.intervention import InterventionParcelle
 from schemas import (
     ParcelleOut, ParcelleCreate, ParcelleUpdate,
     ParcelleSplit, ParcelleMerge, CultureOut, IlotOut,
@@ -101,6 +102,14 @@ def split_parcelle(parcelle_id: str, data: ParcelleSplit, db: Session = Depends(
     if not original:
         raise HTTPException(404, "Parcelle not found")
 
+    # Keep intervention links by moving references from the original parcelle
+    # to both resulting parcelles.
+    original_links = (
+        db.query(InterventionParcelle)
+        .filter(InterventionParcelle.parcelle_id == parcelle_id)
+        .all()
+    )
+
     # Deactivate original
     original.active = 0
 
@@ -116,6 +125,22 @@ def split_parcelle(parcelle_id: str, data: ParcelleSplit, db: Session = Depends(
     pb = Parcelle(id=str(uuid.uuid4()), name=data.name_b, complete_name=data.name_b,
                   surface=data.surface_b, geoJson=data.geoJson_b, **base)
     db.add_all([pa, pb])
+
+    for link in original_links:
+        db.add(InterventionParcelle(
+            id=str(uuid.uuid4()),
+            intervention_id=link.intervention_id,
+            parcelle_id=pa.id,
+        ))
+        db.add(InterventionParcelle(
+            id=str(uuid.uuid4()),
+            intervention_id=link.intervention_id,
+            parcelle_id=pb.id,
+        ))
+
+    for link in original_links:
+        db.delete(link)
+
     db.commit()
     db.refresh(pa)
     db.refresh(pb)
@@ -128,6 +153,13 @@ def merge_parcelles(data: ParcelleMerge, db: Session = Depends(get_db)):
     parcelles = db.query(Parcelle).filter(Parcelle.id.in_(data.parcelle_ids)).all()
     if len(parcelles) != len(data.parcelle_ids):
         raise HTTPException(400, "Some parcelles not found")
+
+    original_ids = [p.id for p in parcelles]
+    original_links = (
+        db.query(InterventionParcelle)
+        .filter(InterventionParcelle.parcelle_id.in_(original_ids))
+        .all()
+    )
 
     # Take properties from first parcelle
     first = parcelles[0]
@@ -147,6 +179,19 @@ def merge_parcelles(data: ParcelleMerge, db: Session = Depends(get_db)):
         geoJson=data.geoJson,
     )
     db.add(merged)
+
+    # Keep interventions by linking each affected intervention to merged parcelle.
+    intervention_ids = {link.intervention_id for link in original_links}
+    for intervention_id in intervention_ids:
+        db.add(InterventionParcelle(
+            id=str(uuid.uuid4()),
+            intervention_id=intervention_id,
+            parcelle_id=merged.id,
+        ))
+
+    for link in original_links:
+        db.delete(link)
+
     db.commit()
     db.refresh(merged)
     return _parcelle_to_out(merged)
