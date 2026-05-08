@@ -25,12 +25,13 @@
 </style>
 {% endblock %}
 
-{% block nav_active_import %}btn-light{% endblock %}
+{% block nav_active_advanced %}active{% endblock %}
+{% block nav_active_import_item %}active{% endblock %}
 
 {% block navbar_selectors %}
-<select id="sel-company" class="form-select form-select-sm bg-dark text-white border-secondary"></select>
-<select id="sel-campagne" class="form-select form-select-sm bg-dark text-white border-secondary"></select>
-<span id="nav-username" class="text-white small ms-2"></span>
+<select id="sel-company" class="form-select form-select-sm"></select>
+<select id="sel-campagne" class="form-select form-select-sm"></select>
+<span id="nav-username" class="text-muted small ms-2"></span>
 {% endblock %}
 
 {% block content %}
