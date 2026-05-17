@@ -482,14 +482,14 @@ class DefaultController extends CommonController
         }
     }
 
-    #[Route(path: 'parcelles', name: 'parcelles2')]
+    #[Route(path: 'parcelles', name: 'parcelles')]
     public function parcellesAction(Request $request)
     {
         return $this->getParcelles($request, 0);
 
     }
 
-    #[Route(path: 'parcelles_t', name: 'parcelles')]
+    #[Route(path: 'parcelles_map', name: 'parcelles2')]
     public function parcellesTAction(Request $request)
     {
         return $this->getParcelles($request, 1);
