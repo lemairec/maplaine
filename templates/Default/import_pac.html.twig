@@ -1,0 +1,340 @@
+{% extends 'base_agri.html.twig' %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+#preview-map { height: 420px; border-radius: 6px; background: #f0f0f0; }
+.step { display: none; }
+.step.active { display: block; }
+.culture-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #fff;
+}
+.culture-badge.unmatched { background: #ef4444; }
+.ilot-block { border: 1px solid #dee2e6; border-radius: 6px; margin-bottom: 12px; overflow: hidden; }
+.ilot-header { background: #f8f9fa; padding: 8px 14px; font-weight: 600; border-bottom: 1px solid #dee2e6; cursor: pointer; }
+.ilot-body { padding: 0; }
+.parc-row { display: flex; align-items: center; gap: 8px; padding: 6px 14px; border-bottom: 1px solid #f0f0f0; font-size: 0.87rem; }
+.parc-row:last-child { border-bottom: none; }
+.parc-check { width: 16px; }
+</style>
+{% endblock %}
+
+{% block body %}
+<div class="container-fluid mt-3">
+<h4>Import fichier TeléPAC (XML)</h4>
+
+{# ---- Étape 1 : upload ---- #}
+<div id="step-upload" class="step active">
+    <div class="card">
+        <div class="card-body">
+            <p class="text-muted">Sélectionnez le fichier XML TeléPAC exporté depuis telepac.agriculture.gouv.fr.</p>
+            <div class="form-group">
+                <label class="font-weight-bold">Campagne cible</label>
+                <select class="form-control w-auto" id="sel-campagne">
+                    {% for c in campagnes %}
+                    <option value="{{ c.id }}" {% if c.id == campagne_id %}selected{% endif %}>{{ c.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group mt-3">
+                <label class="font-weight-bold">Fichier XML TeléPAC</label>
+                <div class="custom-file" style="max-width:400px">
+                    <input type="file" class="custom-file-input" id="file-input" accept=".xml" />
+                    <label class="custom-file-label" for="file-input">Choisir un fichier…</label>
+                </div>
+            </div>
+            <button class="btn btn-primary mt-2" id="btn-preview">Analyser le fichier</button>
+            <span id="upload-spinner" class="ml-2 d-none text-muted">Chargement…</span>
+            <div id="upload-error" class="alert alert-danger mt-3 d-none"></div>
+        </div>
+    </div>
+</div>
+
+{# ---- Étape 2 : prévisualisation ---- #}
+<div id="step-preview" class="step">
+    <div class="row">
+        <div class="col-lg-5">
+            <div class="card mb-3">
+                <div class="card-header font-weight-bold">Informations</div>
+                <div class="card-body">
+                    <table class="table table-sm mb-0">
+                        <tr><td>Exploitation</td><td id="info-exploitation"></td></tr>
+                        <tr><td>PACAGE</td><td id="info-pacage"></td></tr>
+                        <tr><td>Campagne fichier</td><td id="info-campagne"></td></tr>
+                        <tr><td>Îlots</td><td id="info-ilots"></td></tr>
+                        <tr><td>Parcelles</td><td id="info-parcelles"></td></tr>
+                    </table>
+                </div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header font-weight-bold">Cultures détectées</div>
+                <div class="card-body p-2" id="culture-map-block"></div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between">
+                    <span class="font-weight-bold">Îlots & parcelles</span>
+                    <label class="mb-0 small">
+                        <input type="checkbox" id="chk-all" checked /> Tout sélectionner
+                    </label>
+                </div>
+                <div class="card-body p-0" id="ilots-block" style="max-height:350px;overflow-y:auto;"></div>
+            </div>
+
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" id="chk-replace" />
+                        <label class="form-check-label" for="chk-replace">
+                            Désactiver les parcelles existantes de la campagne avant import
+                        </label>
+                    </div>
+                    <button class="btn btn-success" id="btn-confirm">Importer</button>
+                    <button class="btn btn-secondary ml-2" id="btn-back">← Retour</button>
+                    <span id="confirm-spinner" class="ml-2 d-none text-muted">Import en cours…</span>
+                    <div id="confirm-error" class="alert alert-danger mt-2 d-none"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-7">
+            <div class="card">
+                <div class="card-header font-weight-bold">Aperçu carte</div>
+                <div class="card-body p-0">
+                    <div id="preview-map"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div>
+
+<script>const PREVIEW_URL = '{{ url('import_pac_preview') }}';</script>
+<script>const CONFIRM_URL = '{{ url('import_pac_confirm') }}';</script>
+{% endblock %}
+
+{% block javascripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    // ---- UI helpers ----
+    function show(id)  { document.getElementById(id).classList.add('active'); }
+    function hide(id)  { document.getElementById(id).classList.remove('active'); }
+    function showEl(id){ document.getElementById(id).classList.remove('d-none'); }
+    function hideEl(id){ document.getElementById(id).classList.add('d-none'); }
+
+    // ---- Carte ----
+    const map = L.map('preview-map').setView([46.6, 2.5], 6);
+    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: '© Esri', maxZoom: 19,
+    }).addTo(map);
+    let mapLayers = [];
+
+    function clearMap() {
+        mapLayers.forEach(l => map.removeLayer(l));
+        mapLayers = [];
+    }
+
+    function renderMap(ilots, cultureMap) {
+        clearMap();
+        const allBounds = [];
+        ilots.forEach(function (ilot) {
+            ilot.parcelles.forEach(function (p) {
+                if (!p.geojson) return;
+                const culture = cultureMap[p.code_culture];
+                const color = culture ? (culture.color || '#3388ff') : '#94a3b8';
+                const layer = L.geoJSON(p.geojson, {
+                    style: { fillColor: color, color: '#333', weight: 1.5, fillOpacity: 0.55 },
+                });
+                layer.bindTooltip(
+                    '<b>I' + ilot.numero_ilot + '-P' + p.numero_parcelle + '</b><br/>' +
+                    (p.code_culture || '—') + '<br/>' + p.surface_ha.toFixed(2) + ' ha',
+                    { sticky: true }
+                );
+                layer.addTo(map);
+                mapLayers.push(layer);
+                const b = layer.getBounds();
+                if (b.isValid()) allBounds.push(b);
+            });
+        });
+        if (allBounds.length > 0) {
+            const group = L.featureGroup(mapLayers);
+            map.fitBounds(group.getBounds(), { padding: [20, 20] });
+        }
+    }
+
+    // ---- Fichier input label ----
+    document.getElementById('file-input').addEventListener('change', function() {
+        const label = this.nextElementSibling;
+        label.textContent = this.files[0] ? this.files[0].name : 'Choisir un fichier…';
+    });
+
+    // ---- Preview ----
+    let previewData = null;
+
+    document.getElementById('btn-preview').addEventListener('click', function () {
+        const file = document.getElementById('file-input').files[0];
+        if (!file) { alert('Choisissez un fichier XML.'); return; }
+
+        hideEl('upload-error');
+        showEl('upload-spinner');
+        this.disabled = true;
+
+        const fd = new FormData();
+        fd.append('file', file);
+        fd.append('campagne_id', document.getElementById('sel-campagne').value);
+
+        fetch(PREVIEW_URL, { method: 'POST', body: fd })
+            .then(r => r.json())
+            .then(function (data) {
+                if (data.error) throw new Error(data.error);
+                previewData = data;
+                renderPreview(data);
+                hide('step-upload');
+                show('step-preview');
+                map.invalidateSize();
+                renderMap(data.ilots, data.culture_map);
+            })
+            .catch(function (e) {
+                showEl('upload-error');
+                document.getElementById('upload-error').textContent = e.message;
+            })
+            .finally(function () {
+                hideEl('upload-spinner');
+                document.getElementById('btn-preview').disabled = false;
+            });
+    });
+
+    function renderPreview(data) {
+        document.getElementById('info-exploitation').textContent = data.exploitation || '—';
+        document.getElementById('info-pacage').textContent       = data.pacage       || '—';
+        document.getElementById('info-campagne').textContent     = data.campagne_label || '—';
+        document.getElementById('info-ilots').textContent        = data.stats.nb_ilots;
+        document.getElementById('info-parcelles').textContent    = data.stats.nb_parcelles;
+
+        // Cultures
+        const cultureBlock = document.getElementById('culture-map-block');
+        cultureBlock.innerHTML = '';
+        for (const [code, culture] of Object.entries(data.culture_map)) {
+            const span = document.createElement('span');
+            span.className = 'culture-badge mr-1 mb-1 ' + (culture ? '' : 'unmatched');
+            span.style.background = culture ? (culture.color || '#3388ff') : '#ef4444';
+            span.title = culture ? culture.name : 'Non reconnu';
+            span.textContent = code + (culture ? ' → ' + culture.name : ' ✗');
+            cultureBlock.appendChild(span);
+        }
+        if (Object.keys(data.culture_map).length === 0) {
+            cultureBlock.innerHTML = '<span class="text-muted small">Aucune culture détectée</span>';
+        }
+
+        // Îlots
+        const ilotsBlock = document.getElementById('ilots-block');
+        ilotsBlock.innerHTML = '';
+        data.ilots.forEach(function (ilot, iIdx) {
+            const block = document.createElement('div');
+            block.className = 'ilot-block';
+            const header = document.createElement('div');
+            header.className = 'ilot-header';
+            header.textContent = 'Îlot ' + ilot.numero_ilot + ' — ' + (ilot.commune || '—') +
+                ' (' + ilot.parcelles.length + ' parcelle' + (ilot.parcelles.length > 1 ? 's' : '') + ')';
+            block.appendChild(header);
+
+            const body = document.createElement('div');
+            body.className = 'ilot-body';
+            ilot.parcelles.forEach(function (p, pIdx) {
+                const row = document.createElement('div');
+                row.className = 'parc-row';
+                const culture = data.culture_map[p.code_culture];
+                const dot = culture
+                    ? '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:' + (culture.color || '#3388ff') + ';margin-right:4px"></span>'
+                    : '<span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:#ef4444;margin-right:4px" title="Culture non reconnue"></span>';
+                row.innerHTML =
+                    '<input type="checkbox" class="parc-check" checked data-ilot="' + iIdx + '" data-parc="' + pIdx + '" />' +
+                    dot +
+                    '<span>P' + p.numero_parcelle + '</span>' +
+                    '<span class="text-muted">' + (p.code_culture || '—') + '</span>' +
+                    '<span class="ml-auto">' + p.surface_ha.toFixed(2) + ' ha</span>';
+                body.appendChild(row);
+            });
+            block.appendChild(body);
+            ilotsBlock.appendChild(block);
+        });
+    }
+
+    // Tout sélectionner / désélectionner
+    document.getElementById('chk-all').addEventListener('change', function () {
+        document.querySelectorAll('.parc-check').forEach(cb => { cb.checked = this.checked; });
+    });
+
+    // Retour
+    document.getElementById('btn-back').addEventListener('click', function () {
+        hide('step-preview');
+        show('step-upload');
+    });
+
+    // ---- Confirmer l'import ----
+    document.getElementById('btn-confirm').addEventListener('click', function () {
+        if (!previewData) return;
+
+        // Construire la liste des îlots/parcelles sélectionnés
+        const ilotsToImport = [];
+        previewData.ilots.forEach(function (ilot, iIdx) {
+            const parcelles = [];
+            document.querySelectorAll('.parc-check[data-ilot="' + iIdx + '"]').forEach(function (cb, pIdx) {
+                if (cb.checked) parcelles.push(ilot.parcelles[pIdx]);
+            });
+            if (parcelles.length > 0) {
+                ilotsToImport.push(Object.assign({}, ilot, { parcelles: parcelles }));
+            }
+        });
+
+        if (ilotsToImport.length === 0) { alert('Aucune parcelle sélectionnée.'); return; }
+
+        hideEl('confirm-error');
+        showEl('confirm-spinner');
+        this.disabled = true;
+
+        fetch(CONFIRM_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                campagne_id:      document.getElementById('sel-campagne').value,
+                ilots:            ilotsToImport,
+                replace_existing: document.getElementById('chk-replace').checked,
+                pacage:           previewData.pacage,
+            }),
+        })
+        .then(r => r.json())
+        .then(function (data) {
+            if (data.ok) {
+                alert(
+                    'Import terminé !\n' +
+                    data.created_ilots     + ' îlot(s) créé(s)\n' +
+                    data.created_parcelles + ' parcelle(s) créée(s)' +
+                    (data.unmatched_cultures.length > 0
+                        ? '\n\nCultures non reconnues : ' + data.unmatched_cultures.join(', ')
+                        : '')
+                );
+                window.location.href = data.redirect;
+            } else {
+                throw new Error(data.error || 'Erreur inconnue');
+            }
+        })
+        .catch(function (e) {
+            showEl('confirm-error');
+            document.getElementById('confirm-error').textContent = e.message;
+            document.getElementById('btn-confirm').disabled = false;
+            hideEl('confirm-spinner');
+        });
+    });
+});
+</script>
+{% endblock %}
