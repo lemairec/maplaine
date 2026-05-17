@@ -42,7 +42,7 @@
     height: 100%;
 }
 
-/* Cartes parcelle dans la liste */
+/* Items parcelles */
 .parcelle-item {
     display: flex;
     align-items: center;
@@ -54,9 +54,11 @@
     transition: background 0.12s;
     text-decoration: none;
     color: inherit;
+    user-select: none;
 }
 .parcelle-item:hover { background: #e9f2ff; }
 .parcelle-item.active { background: #dbeafe; }
+.parcelle-item.merge-selected { background: #fef9c3; border-left: 3px solid #f59e0b; }
 .parcelle-color-dot {
     width: 12px;
     height: 12px;
@@ -68,17 +70,16 @@
 .parcelle-item-sub  { font-size: 0.78rem; color: #6c757d; }
 .parcelle-item-surface { margin-left: auto; font-size: 0.82rem; color: #495057; white-space: nowrap; }
 
-/* Sections cultures / ilots */
-.section-card {
-    background: #fff;
-    border-top: 2px solid #dee2e6;
+/* Barre fusion (bas de sidebar) */
+#merge-bar {
+    display: none;
     padding: 10px 14px;
+    background: #fef3c7;
+    border-top: 2px solid #f59e0b;
+    flex-shrink: 0;
+    font-size: 0.85rem;
 }
-.section-card h6 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: .05em; color: #6c757d; margin-bottom: 8px; }
-.culture-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; padding: 3px 0; border-bottom: 1px solid #f0f0f0; }
-.culture-row:last-child { border-bottom: none; }
-.ilot-row { font-size: 0.85rem; padding: 4px 0; border-bottom: 1px solid #f0f0f0; }
-.ilot-row:last-child { border-bottom: none; }
+#merge-bar.visible { display: block; }
 
 /* Contrôle couches */
 .map-layer-control {
@@ -90,7 +91,7 @@
 
 @media (max-width: 768px) {
     .parcellaire-layout { flex-direction: column; height: auto; }
-    .parcellaire-sidebar { width: 100%; max-width: none; border-right: none; border-bottom: 1px solid #dee2e6; max-height: 300px; }
+    .parcellaire-sidebar { width: 100%; max-width: none; border-right: none; border-bottom: 1px solid #dee2e6; max-height: 320px; }
     .parcellaire-map { height: 400px; }
 }
 </style>
@@ -100,16 +101,16 @@
 
 {% set carte_data = [] %}
 {% for p in parcelles %}
-    {% if p.geoJson %}
-        {% set carte_data = carte_data|merge([{
-            'id':      p.id,
-            'name':    p.completeName,
-            'surface': p.surface,
-            'culture': p.culture ? p.culture.name : '',
-            'color':   (p.culture and p.culture.color) ? p.culture.color : '#3388ff',
-            'geoJson': p.geoJson,
-            'url':     url('parcelle', {'parcelle_id': p.id}),
-        }]) %}
+    {% if p.active %}
+    {% set carte_data = carte_data|merge([{
+        'id':      p.id,
+        'name':    p.completeName,
+        'surface': p.surface,
+        'culture': p.culture ? p.culture.name : '',
+        'color':   (p.culture and p.culture.color) ? p.culture.color : '#3388ff',
+        'geoJson': p.geoJson,
+        'url':     url('parcelle', {'parcelle_id': p.id}),
+    }]) %}
     {% endif %}
 {% endfor %}
 
@@ -119,22 +120,26 @@
     <div class="parcellaire-sidebar">
 
         <div class="parcellaire-sidebar-header">
-            <div class="d-flex justify-content-between align-items-center">
-                <strong>{{ parcelles | length }} parcelles</strong>
-                <a href="{{ url('parcelle', {'parcelle_id': 0}) }}" class="btn btn-sm btn-primary">+ Ajouter</a>
+            <div class="d-flex justify-content-between align-items-center mb-1">
+                <strong>{{ parcelles | filter(p => p.active) | length }} parcelles</strong>
+                <div class="d-flex gap-1">
+                    <button id="btn-mode-fusion" class="btn btn-sm btn-outline-warning" title="Mode fusion">
+                        ⊕ Fusionner
+                    </button>
+                    <a href="{{ url('parcelle', {'parcelle_id': 0}) }}" class="btn btn-sm btn-primary">+ Ajouter</a>
+                </div>
             </div>
             {% set total_ha = 0 %}
-            {% for p in parcelles %}{% set total_ha = total_ha + p.surface %}{% endfor %}
+            {% for p in parcelles %}{% if p.active %}{% set total_ha = total_ha + p.surface %}{% endif %}{% endfor %}
             <div class="text-muted" style="font-size:0.82rem">Total : {{ total_ha | showHa }}</div>
         </div>
 
         <div class="parcellaire-sidebar-body">
-
-            {# Liste des parcelles #}
-            {% for p in parcelles %}
+            {% for p in parcelles %}{% if p.active %}
             <a href="{{ url('parcelle', {'parcelle_id': p.id}) }}"
                class="parcelle-item"
                data-parcelle-id="{{ p.id }}"
+               data-surface="{{ p.surface }}"
                title="{{ p.completeName }}">
                 <span class="parcelle-color-dot"
                       style="background: {{ (p.culture and p.culture.color) ? p.culture.color : '#ccc' }}"></span>
@@ -147,9 +152,18 @@
                 </span>
                 <span class="parcelle-item-surface">{{ p.surface | showHa }}</span>
             </a>
-            {% endfor %}
-
+            {% endif %}{% endfor %}
         </div>
+
+        {# Barre fusion #}
+        <div id="merge-bar">
+            <div id="merge-info" class="mb-2 fw-semibold"></div>
+            <div class="d-flex gap-2">
+                <button id="btn-do-merge" class="btn btn-sm btn-warning" disabled>Fusionner</button>
+                <button id="btn-cancel-merge" class="btn btn-sm btn-outline-secondary">Annuler</button>
+            </div>
+        </div>
+
     </div>
 
     {# ---- Carte droite ---- #}
@@ -163,54 +177,83 @@
 
 </div>
 
+{# Modal : nom de la nouvelle parcelle #}
+<div class="modal fade" id="modal-merge" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Fusionner les parcelles</h5>
+        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+      </div>
+      <div class="modal-body">
+        <div id="merge-modal-summary" class="text-muted small mb-3"></div>
+        <label class="form-label font-weight-bold">Nom de la nouvelle parcelle</label>
+        <input type="text" class="form-control" id="merge-name" placeholder="Ex : Parcelle A+B" />
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+        <button class="btn btn-warning" id="btn-confirm-merge">Fusionner</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>const CARTE_PARCELLES = {{ carte_data | json_encode | raw }};</script>
+<script>const MERGE_URL = '{{ url('parcelles_merge') }}';</script>
 
 {% endblock %}
 
 {% block javascripts %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/@turf/turf@7/turf.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const parcelles = CARTE_PARCELLES;
-    const layerMap = {};
+    const layerMap  = {};   // id → L.GeoJSON layer
+    const dataMap   = {};   // id → parcelle data object
 
+    // ---- Carte ----
     const map = L.map('carte-parcelles').setView([46.6, 2.5], 6);
-
-    const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
-        attribution: '© Esri', maxZoom: 19,
-    });
-    const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap', maxZoom: 20,
-    });
+    const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: '© Esri', maxZoom: 19 });
+    const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',  { attribution: '© OpenStreetMap', maxZoom: 20 });
     satLayer.addTo(map);
 
     document.getElementById('btn-layer-sat').addEventListener('click', function () {
         osmLayer.remove(); satLayer.addTo(map);
-        this.classList.add('active');
-        document.getElementById('btn-layer-osm').classList.remove('active');
+        this.classList.add('active'); document.getElementById('btn-layer-osm').classList.remove('active');
     });
     document.getElementById('btn-layer-osm').addEventListener('click', function () {
         satLayer.remove(); osmLayer.addTo(map);
-        this.classList.add('active');
-        document.getElementById('btn-layer-sat').classList.remove('active');
+        this.classList.add('active'); document.getElementById('btn-layer-sat').classList.remove('active');
     });
+
+    const defaultStyle = { color: '#333', weight: 2, fillOpacity: 0.5 };
+    const mergeStyle   = { color: '#f59e0b', weight: 3, fillOpacity: 0.6 };
 
     const allLayers = [];
     parcelles.forEach(function (p) {
+        dataMap[p.id] = p;
+        if (!p.geoJson) return;
         let geojson;
         try { geojson = JSON.parse(p.geoJson); } catch (e) { return; }
 
         const layer = L.geoJSON(geojson, {
-            style: { fillColor: p.color || '#3388ff', color: '#333', weight: 2, fillOpacity: 0.5 },
+            style: Object.assign({}, defaultStyle, { fillColor: p.color || '#3388ff' }),
         });
 
         const surface = p.surface ? p.surface.toFixed(2) + ' ha' : '—';
-        layer.bindPopup(
-            '<b>' + (p.name || '—') + '</b><br/>' +
-            (p.culture ? '<span style="color:#666">' + p.culture + '</span><br/>' : '') +
-            surface + '<br/><a href="' + p.url + '">Modifier</a>'
-        );
+        layer.bindPopup('<b>' + (p.name || '—') + '</b><br/>' + (p.culture ? p.culture + '<br/>' : '') + surface + '<br/><a href="' + p.url + '">Modifier</a>');
         layer.bindTooltip('<b>' + (p.name || '—') + '</b><br/>' + surface, { sticky: true });
+
+        // Clic sur la carte → sélection bidirectionnelle
+        layer.on('click', function () {
+            if (mergeMode) {
+                toggleMergeById(p.id);
+            } else {
+                selectParcelle(p.id, false); // false = ne pas re-zoomer (on est déjà sur la carte)
+            }
+        });
+
         layer.addTo(map);
         allLayers.push(layer);
         layerMap[p.id] = layer;
@@ -220,24 +263,155 @@ document.addEventListener('DOMContentLoaded', function () {
         map.fitBounds(L.featureGroup(allLayers).getBounds(), { padding: [20, 20] });
     }
 
-    // Clic sur une parcelle dans la liste → zoom + popup
+    // ---- Sélection unifiée (liste ↔ carte) ----
+    function selectParcelle(id, zoomToLayer) {
+        // Liste : highlight + scroll
+        document.querySelectorAll('.parcelle-item').forEach(el => el.classList.remove('active'));
+        const listEl = document.querySelector('.parcelle-item[data-parcelle-id="' + id + '"]');
+        if (listEl) {
+            listEl.classList.add('active');
+            listEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+        }
+
+        // Carte : zoom + popup
+        const layer = layerMap[id];
+        if (layer) {
+            if (zoomToLayer) {
+                map.fitBounds(layer.getBounds(), { padding: [40, 40], maxZoom: 18 });
+            }
+            layer.eachLayer(l => l.openPopup(layer.getBounds().getCenter()));
+        }
+    }
+
+    // Clic sur la liste → sélection + zoom
     document.querySelectorAll('.parcelle-item').forEach(function (el) {
         el.addEventListener('click', function (e) {
+            if (mergeMode) return;
             const id = this.dataset.parcelleId;
-            const layer = layerMap[id];
-            if (!layer) return; // pas de contour → navigation normale vers la fiche
-
+            if (!layerMap[id]) return; // pas de contour → navigation normale
             e.preventDefault();
-            document.querySelectorAll('.parcelle-item').forEach(x => x.classList.remove('active'));
-            this.classList.add('active');
-
-            const bounds = layer.getBounds();
-            map.fitBounds(bounds, { padding: [40, 40], maxZoom: 18 });
-
-            // openPopup sur le premier sous-layer (L.GeoJSON est un FeatureGroup)
-            const center = bounds.getCenter();
-            layer.eachLayer(function (l) { l.openPopup(center); });
+            selectParcelle(id, true);
         });
+    });
+
+    // ---- Mode fusion ----
+    let mergeMode = false;
+    const mergeSelection = new Set();
+
+    function enterMergeMode() {
+        mergeMode = true;
+        document.getElementById('btn-mode-fusion').classList.replace('btn-outline-warning', 'btn-warning');
+        document.getElementById('btn-mode-fusion').textContent = '✕ Quitter fusion';
+        document.getElementById('merge-bar').classList.add('visible');
+        map.closePopup();
+        updateMergeUI();
+    }
+
+    function exitMergeMode() {
+        mergeMode = false;
+        mergeSelection.clear();
+        document.getElementById('btn-mode-fusion').classList.replace('btn-warning', 'btn-outline-warning');
+        document.getElementById('btn-mode-fusion').textContent = '⊕ Fusionner';
+        document.getElementById('merge-bar').classList.remove('visible');
+        document.querySelectorAll('.parcelle-item').forEach(el => {
+            el.classList.remove('merge-selected');
+        });
+        Object.values(layerMap).forEach(function (layer) {
+            const p = parcelles.find(x => layerMap[x.id] === layer);
+            if (p) layer.setStyle(Object.assign({}, defaultStyle, { fillColor: p.color || '#3388ff' }));
+        });
+    }
+
+    function updateMergeUI() {
+        const n = mergeSelection.size;
+        const surface = [...mergeSelection].reduce((s, id) => s + (dataMap[id] ? (dataMap[id].surface || 0) : 0), 0);
+        document.getElementById('merge-info').textContent =
+            n + ' parcelle' + (n > 1 ? 's' : '') + ' sélectionnée' + (n > 1 ? 's' : '') +
+            (surface > 0 ? ' · ' + surface.toFixed(2) + ' ha' : '');
+        document.getElementById('btn-do-merge').disabled = n < 2;
+    }
+
+    function toggleMergeById(id) {
+        const listEl = document.querySelector('.parcelle-item[data-parcelle-id="' + id + '"]');
+        const p = dataMap[id];
+        if (mergeSelection.has(id)) {
+            mergeSelection.delete(id);
+            if (listEl) { listEl.classList.remove('merge-selected'); listEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+            if (layerMap[id] && p) layerMap[id].setStyle(Object.assign({}, defaultStyle, { fillColor: p.color || '#3388ff' }));
+        } else {
+            mergeSelection.add(id);
+            if (listEl) { listEl.classList.add('merge-selected'); listEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+            if (layerMap[id]) layerMap[id].setStyle(mergeStyle);
+        }
+        updateMergeUI();
+    }
+
+    // Clic en mode fusion depuis la liste
+    document.querySelectorAll('.parcelle-item').forEach(function (el) {
+        el.addEventListener('click', function (e) {
+            if (!mergeMode) return;
+            e.preventDefault();
+            toggleMergeById(this.dataset.parcelleId);
+        });
+    });
+
+    document.getElementById('btn-mode-fusion').addEventListener('click', function () {
+        mergeMode ? exitMergeMode() : enterMergeMode();
+    });
+    document.getElementById('btn-cancel-merge').addEventListener('click', exitMergeMode);
+
+    // Ouvrir modal de confirmation
+    document.getElementById('btn-do-merge').addEventListener('click', function () {
+        const names = [...mergeSelection].map(id => dataMap[id] ? dataMap[id].name : id).join(' + ');
+        const surface = [...mergeSelection].reduce((s, id) => s + (dataMap[id] ? (dataMap[id].surface || 0) : 0), 0);
+        document.getElementById('merge-modal-summary').textContent =
+            'Fusion de : ' + names + ' (' + surface.toFixed(2) + ' ha)';
+        document.getElementById('merge-name').value = names;
+        $('#modal-merge').modal('show');
+    });
+
+    // Confirmer la fusion
+    document.getElementById('btn-confirm-merge').addEventListener('click', function () {
+        const name = document.getElementById('merge-name').value.trim();
+        if (!name) { document.getElementById('merge-name').focus(); return; }
+
+        // Union des polygones avec Turf.js
+        const ids = [...mergeSelection];
+        let unionGeoJson = null;
+        try {
+            const features = ids
+                .filter(id => dataMap[id] && dataMap[id].geoJson)
+                .map(id => {
+                    const parsed = JSON.parse(dataMap[id].geoJson);
+                    // Normaliser en Feature si besoin
+                    if (parsed.type === 'Feature') return parsed;
+                    return turf.feature(parsed);
+                });
+
+            if (features.length >= 2) {
+                let union = features[0];
+                for (let i = 1; i < features.length; i++) {
+                    union = turf.union(turf.featureCollection([union, features[i]]));
+                }
+                unionGeoJson = JSON.stringify(union.geometry);
+            } else if (features.length === 1) {
+                unionGeoJson = JSON.stringify(features[0].geometry);
+            }
+        } catch (e) {
+            console.warn('Union Turf échouée, geoJson ignoré', e);
+        }
+
+        fetch(MERGE_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ parcelle_ids: ids, name: name, geoJson: unionGeoJson }),
+        })
+        .then(r => r.json())
+        .then(function (data) {
+            if (data.ok) window.location.href = data.redirect || window.location.href;
+            else alert('Erreur : ' + (data.error || 'inconnue'));
+        })
+        .catch(() => alert('Erreur réseau'));
     });
 });
 </script>

@@ -599,6 +599,75 @@ class DefaultController extends CommonController
 
     }
 
+    #[Route(path: '/parcelles/merge', name: 'parcelles_merge', methods: ['POST'])]
+    public function parcellesMergeAction(Request $request): JsonResponse
+    {
+        $this->check_user($request);
+        $em = $this->getDoctrine()->getManager();
+
+        $data = json_decode($request->getContent(), true);
+        $ids     = $data['parcelle_ids'] ?? [];
+        $newName = trim($data['name'] ?? '');
+        $geoJson = $data['geoJson'] ?? null;
+
+        if (count($ids) < 2 || !$newName) {
+            return new JsonResponse(['error' => 'Données invalides'], 400);
+        }
+
+        $originals = $em->getRepository(Parcelle::class)
+            ->createQueryBuilder('p')
+            ->where('p.id IN (:ids)')
+            ->setParameter('ids', $ids)
+            ->getQuery()->getResult();
+
+        if (count($originals) !== count($ids)) {
+            return new JsonResponse(['error' => 'Parcelles introuvables'], 404);
+        }
+
+        $first = $originals[0];
+        $totalSurface = array_sum(array_map(fn($p) => $p->surface ?? 0, $originals));
+
+        $originalIdsList = array_map(fn($p) => $p->id, $originals);
+        $links = $em->getRepository(InterventionParcelle::class)
+            ->createQueryBuilder('ip')
+            ->where('ip.parcelle IN (:ids)')
+            ->setParameter('ids', $originalIdsList)
+            ->getQuery()->getResult();
+
+        foreach ($originals as $p) {
+            $p->active = 0;
+        }
+
+        $merged = new Parcelle();
+        $merged->campagne     = $first->campagne;
+        $merged->ilot         = $first->ilot;
+        $merged->culture      = $first->culture;
+        $merged->active       = 1;
+        $merged->name         = $newName;
+        $merged->completeName = $newName;
+        $merged->surface      = $totalSurface;
+        $merged->commune      = $first->commune;
+        $merged->geoJson      = $geoJson ?? $first->geoJson;
+        $em->persist($merged);
+        $em->flush();
+
+        $seenInterventions = [];
+        foreach ($links as $link) {
+            $iid = (string) $link->intervention->id;
+            if (!in_array($iid, $seenInterventions)) {
+                $newLink = new InterventionParcelle();
+                $newLink->intervention = $link->intervention;
+                $newLink->parcelle     = $merged;
+                $em->persist($newLink);
+                $seenInterventions[] = $iid;
+            }
+            $em->remove($link);
+        }
+        $em->flush();
+
+        return new JsonResponse(['ok' => true, 'redirect' => $this->generateUrl('parcelles')]);
+    }
+
     #[Route(path: '/parcelle/{parcelle_id}/delete', name: 'parcelle_delete')]
     public function parcelleDeleteAction($parcelle_id, Request $request)
     {
