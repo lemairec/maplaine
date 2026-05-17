@@ -74,6 +74,7 @@ class InterventionController extends CommonController
                     , "caracteristiques" => $recolte->getCarateristiques()];
             }
             foreach($parcelles2 as $parcelle){
+                if (!$parcelle->active) continue;
                 $checked = false;
                 foreach($intervention->parcelles as $p){
                     if($parcelle->id == $p->parcelle->id){
@@ -85,6 +86,7 @@ class InterventionController extends CommonController
             }
         } else {
             foreach($parcelles2 as $parcelle){
+                if (!$parcelle->active) continue;
                 $parcelles[] = ["id" => $parcelle->id, "name" => $parcelle->completeName, "surface"=>$parcelle->surface, "checked"=>false];
             }
         }
