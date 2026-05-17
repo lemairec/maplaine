@@ -66,9 +66,11 @@ function renderCahier() {
     });
     container.innerHTML = sortedParcelles.map(p => {
         const pInterventions = getParcelleInterventions(p.id);
-        const interventionsHtml = pInterventions.length === 0
-            ? '<p class="text-muted small mb-0">Aucune intervention</p>'
-            : `<div class="table-responsive"><table class="table table-sm mb-0"><thead><tr><th>Date</th><th>Type</th><th>Nom</th><th>Produits (dose/ha)</th></tr></thead><tbody>${pInterventions.map(i => {
+        let interventionsHtml = '<div class="table-responsive"><table class="table table-sm mb-0"><thead><tr><th>Date</th><th>Type</th><th>Nom</th><th>Produits (dose/ha)</th></tr></thead><tbody>';
+        if (pInterventions.length === 0) {
+            interventionsHtml += '<tr><td colspan="4" class="text-muted small">Aucune intervention</td></tr>';
+        } else {
+            interventionsHtml += pInterventions.map(i => {
                 const produits = (i.produits || []).map(pr => {
                     // Nettoyer le nom (retirer " (l)" ou " (kg)" ou " (t)" à la fin)
                     let nom = pr.name ? pr.name.replace(/\s*\([a-zA-Z]+\)$/, '') : '';
@@ -86,7 +88,9 @@ function renderCahier() {
                     }
                 }).join('<br/>') || '—';
                 return `<tr><td>${escapeHtml(formatDate(i.datetime))}</td><td><span class="type-pill">${escapeHtml(i.type)}</span></td><td>${escapeHtml(i.name || '—')}</td><td class="small">${produits}</td></tr>`;
-            }).join('')}</tbody></table></div>`;
+            }).join('');
+        }
+        interventionsHtml += '</tbody></table></div>';
 
         return `
             <section class="cahier-sheet">
