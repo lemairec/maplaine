@@ -177,7 +177,7 @@ def confirm_import(data: ImportConfirmIn, db: Session = Depends(get_db)):
             if not culture and parc_in.code_culture:
                 unmatched_cultures.add(parc_in.code_culture)
 
-            name = f"Î{ilot_in.numero_ilot}-P{parc_in.numero_parcelle}"
+            name = f"import_i{ilot_in.numero_ilot}_p{parc_in.numero_parcelle}"
             parcelle = Parcelle(
                 id=str(uuid.uuid4()),
                 campagne_id=data.campagne_id,
