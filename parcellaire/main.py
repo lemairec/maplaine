@@ -10,7 +10,14 @@ from routes.auth import router as auth_router
 from routes.import_telepac import router as import_telepac_router
 from auth import get_session_user_id
 
+from migrations import run_migrations
+
 app = FastAPI(title="Gestion Parcellaire")
+
+
+@app.on_event("startup")
+def startup():
+    run_migrations()
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")

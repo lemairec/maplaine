@@ -177,7 +177,8 @@ def confirm_import(data: ImportConfirmIn, db: Session = Depends(get_db)):
             if not culture and parc_in.code_culture:
                 unmatched_cultures.add(parc_in.code_culture)
 
-            name = f"import_i{ilot_in.numero_ilot}_p{parc_in.numero_parcelle}"
+            import_ref = f"i{ilot_in.numero_ilot}_p{parc_in.numero_parcelle}"
+            name = f"import_{import_ref}"
             parcelle = Parcelle(
                 id=str(uuid.uuid4()),
                 campagne_id=data.campagne_id,
@@ -188,6 +189,7 @@ def confirm_import(data: ImportConfirmIn, db: Session = Depends(get_db)):
                 complete_name=name,
                 surface=parc_in.surface_ha,
                 commune=ilot_in.commune,
+                import_ref=import_ref,
                 geoJson=json.dumps(parc_in.geojson) if parc_in.geojson else None,
             )
             db.add(parcelle)

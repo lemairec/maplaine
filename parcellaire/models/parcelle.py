@@ -19,6 +19,7 @@ class Parcelle(Base):
     surface = Column(Float)
     name = Column(String(255))
     complete_name = Column("complete_name", String(255))
+    import_ref = Column("import_ref", String(45))
     comment = Column(String(2048))
     geoJson = Column("geoJson", Text)
 
