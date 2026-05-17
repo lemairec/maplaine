@@ -1,0 +1,244 @@
+{% extends 'base_agri.html.twig' %}
+
+{% block stylesheets %}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+.parcellaire-layout {
+    display: flex;
+    gap: 0;
+    height: calc(100vh - 130px);
+    min-height: 500px;
+}
+
+/* Panneau gauche */
+.parcellaire-sidebar {
+    width: 360px;
+    min-width: 280px;
+    max-width: 420px;
+    display: flex;
+    flex-direction: column;
+    border-right: 1px solid #dee2e6;
+    background: #f8f9fa;
+    overflow: hidden;
+}
+.parcellaire-sidebar-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid #dee2e6;
+    background: #fff;
+    flex-shrink: 0;
+}
+.parcellaire-sidebar-body {
+    overflow-y: auto;
+    flex: 1;
+}
+
+/* Carte droite */
+.parcellaire-map {
+    flex: 1;
+    position: relative;
+}
+#carte-parcelles {
+    width: 100%;
+    height: 100%;
+}
+
+/* Cartes parcelle dans la liste */
+.parcelle-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 14px;
+    border-bottom: 1px solid #e9ecef;
+    cursor: pointer;
+    background: #fff;
+    transition: background 0.12s;
+    text-decoration: none;
+    color: inherit;
+}
+.parcelle-item:hover { background: #e9f2ff; }
+.parcelle-item.active { background: #dbeafe; }
+.parcelle-color-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    border: 1px solid rgba(0,0,0,0.15);
+}
+.parcelle-item-name { font-weight: 600; font-size: 0.9rem; line-height: 1.2; }
+.parcelle-item-sub  { font-size: 0.78rem; color: #6c757d; }
+.parcelle-item-surface { margin-left: auto; font-size: 0.82rem; color: #495057; white-space: nowrap; }
+
+/* Sections cultures / ilots */
+.section-card {
+    background: #fff;
+    border-top: 2px solid #dee2e6;
+    padding: 10px 14px;
+}
+.section-card h6 { font-size: 0.8rem; text-transform: uppercase; letter-spacing: .05em; color: #6c757d; margin-bottom: 8px; }
+.culture-row { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; padding: 3px 0; border-bottom: 1px solid #f0f0f0; }
+.culture-row:last-child { border-bottom: none; }
+.ilot-row { font-size: 0.85rem; padding: 4px 0; border-bottom: 1px solid #f0f0f0; }
+.ilot-row:last-child { border-bottom: none; }
+
+/* Contrôle couches */
+.map-layer-control {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    z-index: 1000;
+}
+
+@media (max-width: 768px) {
+    .parcellaire-layout { flex-direction: column; height: auto; }
+    .parcellaire-sidebar { width: 100%; max-width: none; border-right: none; border-bottom: 1px solid #dee2e6; max-height: 300px; }
+    .parcellaire-map { height: 400px; }
+}
+</style>
+{% endblock %}
+
+{% block body %}
+
+{% set carte_data = [] %}
+{% for p in parcelles %}
+    {% if p.geoJson %}
+        {% set carte_data = carte_data|merge([{
+            'id':      p.id,
+            'name':    p.completeName,
+            'surface': p.surface,
+            'culture': p.culture ? p.culture.name : '',
+            'color':   (p.culture and p.culture.color) ? p.culture.color : '#3388ff',
+            'geoJson': p.geoJson,
+            'url':     url('parcelle', {'parcelle_id': p.id}),
+        }]) %}
+    {% endif %}
+{% endfor %}
+
+<div class="parcellaire-layout">
+
+    {# ---- Panneau gauche ---- #}
+    <div class="parcellaire-sidebar">
+
+        <div class="parcellaire-sidebar-header">
+            <div class="d-flex justify-content-between align-items-center">
+                <strong>{{ parcelles | length }} parcelles</strong>
+                <a href="{{ url('parcelle', {'parcelle_id': 0}) }}" class="btn btn-sm btn-primary">+ Ajouter</a>
+            </div>
+            {% set total_ha = 0 %}
+            {% for p in parcelles %}{% set total_ha = total_ha + p.surface %}{% endfor %}
+            <div class="text-muted" style="font-size:0.82rem">Total : {{ total_ha | showHa }}</div>
+        </div>
+
+        <div class="parcellaire-sidebar-body">
+
+            {# Liste des parcelles #}
+            {% for p in parcelles %}
+            <a href="{{ url('parcelle', {'parcelle_id': p.id}) }}"
+               class="parcelle-item"
+               data-parcelle-id="{{ p.id }}"
+               title="{{ p.completeName }}">
+                <span class="parcelle-color-dot"
+                      style="background: {{ (p.culture and p.culture.color) ? p.culture.color : '#ccc' }}"></span>
+                <span>
+                    <div class="parcelle-item-name">{{ p.completeName }}</div>
+                    <div class="parcelle-item-sub">
+                        {{ p.culture ? p.culture : '—' }}
+                        {% if p.getIlotName() %} · {{ p.getIlotName() }}{% endif %}
+                    </div>
+                </span>
+                <span class="parcelle-item-surface">{{ p.surface | showHa }}</span>
+            </a>
+            {% endfor %}
+
+        </div>
+    </div>
+
+    {# ---- Carte droite ---- #}
+    <div class="parcellaire-map">
+        <div id="carte-parcelles"></div>
+        <div class="map-layer-control btn-group btn-group-sm shadow-sm">
+            <button class="btn btn-light active" id="btn-layer-sat">Satellite</button>
+            <button class="btn btn-light" id="btn-layer-osm">Plan</button>
+        </div>
+    </div>
+
+</div>
+
+<script>const CARTE_PARCELLES = {{ carte_data | json_encode | raw }};</script>
+
+{% endblock %}
+
+{% block javascripts %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const parcelles = CARTE_PARCELLES;
+    const layerMap = {};
+
+    const map = L.map('carte-parcelles').setView([46.6, 2.5], 6);
+
+    const satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: '© Esri', maxZoom: 19,
+    });
+    const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap', maxZoom: 20,
+    });
+    satLayer.addTo(map);
+
+    document.getElementById('btn-layer-sat').addEventListener('click', function () {
+        osmLayer.remove(); satLayer.addTo(map);
+        this.classList.add('active');
+        document.getElementById('btn-layer-osm').classList.remove('active');
+    });
+    document.getElementById('btn-layer-osm').addEventListener('click', function () {
+        satLayer.remove(); osmLayer.addTo(map);
+        this.classList.add('active');
+        document.getElementById('btn-layer-sat').classList.remove('active');
+    });
+
+    const allLayers = [];
+    parcelles.forEach(function (p) {
+        let geojson;
+        try { geojson = JSON.parse(p.geoJson); } catch (e) { return; }
+
+        const layer = L.geoJSON(geojson, {
+            style: { fillColor: p.color || '#3388ff', color: '#333', weight: 2, fillOpacity: 0.5 },
+        });
+
+        const surface = p.surface ? p.surface.toFixed(2) + ' ha' : '—';
+        layer.bindPopup(
+            '<b>' + (p.name || '—') + '</b><br/>' +
+            (p.culture ? '<span style="color:#666">' + p.culture + '</span><br/>' : '') +
+            surface + '<br/><a href="' + p.url + '">Modifier</a>'
+        );
+        layer.bindTooltip('<b>' + (p.name || '—') + '</b><br/>' + surface, { sticky: true });
+        layer.addTo(map);
+        allLayers.push(layer);
+        layerMap[p.id] = layer;
+    });
+
+    if (allLayers.length > 0) {
+        map.fitBounds(L.featureGroup(allLayers).getBounds(), { padding: [20, 20] });
+    }
+
+    // Clic sur une parcelle dans la liste → zoom + popup
+    document.querySelectorAll('.parcelle-item').forEach(function (el) {
+        el.addEventListener('click', function (e) {
+            const id = this.dataset.parcelleId;
+            const layer = layerMap[id];
+            if (!layer) return; // pas de contour → navigation normale vers la fiche
+
+            e.preventDefault();
+            document.querySelectorAll('.parcelle-item').forEach(x => x.classList.remove('active'));
+            this.classList.add('active');
+
+            const bounds = layer.getBounds();
+            map.fitBounds(bounds, { padding: [40, 40], maxZoom: 18 });
+
+            // openPopup sur le premier sous-layer (L.GeoJSON est un FeatureGroup)
+            const center = bounds.getCenter();
+            layer.eachLayer(function (l) { l.openPopup(center); });
+        });
+    });
+});
+</script>
+{% endblock %}

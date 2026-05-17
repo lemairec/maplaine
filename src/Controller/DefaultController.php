@@ -456,12 +456,12 @@ class DefaultController extends CommonController
                 'navs' => ["Parcelles" => "parcelles"]
             ));
         } else if($table == 1){
-            return $this->render('Default/parcelles_t.html.twig', array(
-                'ilots' => $ilots2,
+            return $this->render('Default/parcelles_map.html.twig', array(
+                'ilots' => [],
                 'campagnes' => $this->campagnes,
                 'campagne_id' => $campagne->id,
                 'parcelles' => $parcelles,
-                'cultures' => $cultures,
+                'cultures' => [],
                 'total' => $total,
                 'navs' => ["Parcelles" => "parcelles"]
             ));
