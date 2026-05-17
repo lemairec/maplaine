@@ -68,9 +68,24 @@ function renderCahier() {
         const pInterventions = getParcelleInterventions(p.id);
         const interventionsHtml = pInterventions.length === 0
             ? '<p class="text-muted small mb-0">Aucune intervention</p>'
-            : `<div class="table-responsive"><table class="table table-sm mb-0"><thead><tr><th>Date</th><th>Type</th><th>Nom</th><th>Surface</th><th>Produits</th></tr></thead><tbody>${pInterventions.map(i => {
-                const produits = (i.produits || []).map(pr => `${escapeHtml(pr.name)}: ${escapeHtml(pr.quantity)} ${escapeHtml(pr.unity || '')}`).join('<br/>') || '—';
-                return `<tr><td>${escapeHtml(formatDate(i.datetime))}</td><td><span class="type-pill">${escapeHtml(i.type)}</span></td><td>${escapeHtml(i.name || '—')}</td><td>${escapeHtml(formatHa(i.surface))}</td><td class="small">${produits}</td></tr>`;
+            : `<div class="table-responsive"><table class="table table-sm mb-0"><thead><tr><th>Date</th><th>Type</th><th>Nom</th><th>Produits (dose/ha)</th></tr></thead><tbody>${pInterventions.map(i => {
+                const produits = (i.produits || []).map(pr => {
+                    // Nettoyer le nom (retirer " (l)" ou " (kg)" ou " (t)" à la fin)
+                    let nom = pr.name ? pr.name.replace(/\s*\([a-zA-Z]+\)$/, '') : '';
+                    let doseHa = pr.dose_ha;
+                    if ((doseHa === undefined || doseHa === null) && pr.quantity !== undefined && i.surface) {
+                        const surfaceHa = Number(i.surface);
+                        if (surfaceHa > 0) {
+                            doseHa = (Number(pr.quantity) / surfaceHa).toFixed(2);
+                        }
+                    }
+                    if (doseHa !== undefined && doseHa !== null) {
+                        return `${escapeHtml(nom)}: ${escapeHtml(doseHa)}${pr.unity ? ' ' + escapeHtml(pr.unity) + '/ha' : ''}`;
+                    } else {
+                        return `${escapeHtml(nom)}: ${escapeHtml(pr.quantity)}${pr.unity ? ' ' + escapeHtml(pr.unity) : ''}`;
+                    }
+                }).join('<br/>') || '—';
+                return `<tr><td>${escapeHtml(formatDate(i.datetime))}</td><td><span class="type-pill">${escapeHtml(i.type)}</span></td><td>${escapeHtml(i.name || '—')}</td><td class="small">${produits}</td></tr>`;
             }).join('')}</tbody></table></div>`;
 
         return `
