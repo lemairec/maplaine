@@ -12,7 +12,7 @@ class Culture(Base):
     codetelepac = Column(String(45))
     color = Column(String(25))
     commercialisation = Column(String(255))
-    rendementObj = Column("rendementObj", Float)
-    prixObj = Column("prixObj", Float)
+    rendement_obj = Column("rendement_obj", Float)
+    prix_obj = Column("prix_obj", Float)
 
     company = relationship("Company")
