@@ -146,7 +146,9 @@
                     <button id="btn-mode-fusion" class="btn btn-sm btn-outline-warning" title="Mode fusion">
                         ⊕ Fusionner
                     </button>
-                    <a href="{{ url('parcelle', {'parcelle_id': 0}) }}" class="btn btn-sm btn-primary">+ Ajouter</a>
+                    <button id="btn-mode-draw" class="btn btn-sm btn-success" title="Dessiner une nouvelle parcelle">
+                        + Ajouter
+                    </button>
                 </div>
             </div>
             {% set total_ha = 0 %}
@@ -226,9 +228,58 @@
     <button class="btn btn-sm btn-outline-light" id="btn-contour-cancel">✕ Annuler</button>
 </div>
 
+{# Modal : nouvelle parcelle #}
+<div class="modal fade" id="modal-new-parcelle" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Nouvelle parcelle</h5>
+        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-2">
+          <label class="font-weight-bold">Surface calculée</label>
+          <div id="new-parcelle-surface" class="text-success font-weight-bold">— ha</div>
+        </div>
+        <div class="mb-2">
+          <label class="font-weight-bold">Nom <span class="text-danger">*</span></label>
+          <input type="text" class="form-control" id="new-parcelle-name" placeholder="Ex : P1 - Grande pièce" />
+        </div>
+        <div class="mb-2">
+          <label>Culture</label>
+          <select class="form-control" id="new-parcelle-culture">
+            <option value="">— Aucune —</option>
+            {% for c in cultures_list %}
+            <option value="{{ c.id }}">{{ c.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-2">
+          <label>Îlot</label>
+          <select class="form-control" id="new-parcelle-ilot">
+            <option value="">— Aucun —</option>
+            {% for i in ilots_list %}
+            <option value="{{ i.id }}">{{ i.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-2">
+          <label>Commune</label>
+          <input type="text" class="form-control" id="new-parcelle-commune" />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+        <button class="btn btn-primary" id="btn-confirm-new-parcelle">Créer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>const CARTE_PARCELLES = {{ carte_data | json_encode | raw }};</script>
 <script>const MERGE_URL = '{{ url('parcelles_merge') }}';</script>
 <script>const GEOJSON_BASE_URL = '{{ url('parcelle_geojson', {'parcelle_id': '__ID__'}) }}';</script>
+<script>const CREATE_URL = '{{ url('parcelle_create_map') }}';</script>
 
 {% endblock %}
 
@@ -564,8 +615,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     });
 
-    // Après création d'un polygone
+    // Après création d'un polygone (mode édition contour seulement)
     map.on('draw:created', function(e) {
+        if (drawMode) return; // géré par le listener du mode "nouvelle parcelle"
         drawLayer.clearLayers();
         drawLayer.addLayer(e.layer);
         const latlngs = e.layer.getLatLngs()[0];
@@ -590,6 +642,94 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById('btn-contour-save').addEventListener('click', () => stopEditContour(true));
     document.getElementById('btn-contour-cancel').addEventListener('click', () => stopEditContour(false));
+
+    // ---- Mode dessin nouvelle parcelle ----
+    let drawMode = false;
+    let drawnNewGeoJson = null;
+    let drawnNewSurface = null;
+
+    const newDrawControl = new L.Control.Draw({
+        draw: {
+            polygon:     { allowIntersection: false, shapeOptions: { color: '#2563eb', weight: 2 } },
+            polyline:    false, rectangle: false, circle: false, marker: false, circlemarker: false,
+        },
+        edit: false,
+    });
+
+    function enterDrawMode() {
+        if (mergeMode) exitMergeMode();
+        drawMode = true;
+        document.getElementById('btn-mode-draw').classList.replace('btn-success', 'btn-danger');
+        document.getElementById('btn-mode-draw').textContent = '✕ Annuler';
+        map.closePopup();
+        map.addControl(newDrawControl);
+    }
+
+    function exitDrawMode() {
+        drawMode = false;
+        drawnNewGeoJson = null;
+        drawnNewSurface = null;
+        document.getElementById('btn-mode-draw').classList.replace('btn-danger', 'btn-success');
+        document.getElementById('btn-mode-draw').textContent = '+ Ajouter';
+        map.removeControl(newDrawControl);
+        // Supprimer le polygone temporaire s'il existe
+        drawLayer.eachLayer(l => { if (l._isNewParcelle) drawLayer.removeLayer(l); });
+    }
+
+    document.getElementById('btn-mode-draw').addEventListener('click', function() {
+        drawMode ? exitDrawMode() : enterDrawMode();
+    });
+
+    // Après tracé du polygone en mode "nouvelle parcelle"
+    map.on('draw:created', function(e) {
+        if (!drawMode) return; // géré ailleurs si mode édition
+        const layer = e.layer;
+        layer._isNewParcelle = true;
+        drawLayer.addLayer(layer);
+
+        const latlngs = layer.getLatLngs()[0];
+        drawnNewSurface = computeAreaHa(latlngs);
+        drawnNewGeoJson = JSON.stringify(layer.toGeoJSON().geometry);
+
+        // Remplir et ouvrir le modal
+        document.getElementById('new-parcelle-name').value = '';
+        document.getElementById('new-parcelle-culture').value = '';
+        document.getElementById('new-parcelle-ilot').value = '';
+        document.getElementById('new-parcelle-commune').value = '';
+        document.getElementById('new-parcelle-surface').textContent =
+            drawnNewSurface ? drawnNewSurface.toFixed(4) + ' ha' : '— ha';
+        map.removeControl(newDrawControl); // retirer l'outil dessin pendant le modal
+        $('#modal-new-parcelle').modal('show');
+    });
+
+    $('#modal-new-parcelle').on('hidden.bs.modal', function() {
+        if (drawMode && !drawnNewGeoJson) return; // annulé avant dessin
+        exitDrawMode();
+    });
+
+    document.getElementById('btn-confirm-new-parcelle').addEventListener('click', function() {
+        const name = document.getElementById('new-parcelle-name').value.trim();
+        if (!name) { document.getElementById('new-parcelle-name').focus(); return; }
+
+        fetch(CREATE_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name:       name,
+                surface:    drawnNewSurface,
+                geoJson:    drawnNewGeoJson,
+                culture_id: document.getElementById('new-parcelle-culture').value || null,
+                ilot_id:    document.getElementById('new-parcelle-ilot').value    || null,
+                commune:    document.getElementById('new-parcelle-commune').value  || null,
+            }),
+        })
+        .then(r => r.json())
+        .then(function(data) {
+            if (data.ok) window.location.href = data.redirect || window.location.href;
+            else alert('Erreur : ' + (data.error || 'inconnue'));
+        })
+        .catch(() => alert('Erreur réseau'));
+    });
 
     // Clic sur le lien "✏ Contour" dans le popup
     map.on('popupopen', function(e) {

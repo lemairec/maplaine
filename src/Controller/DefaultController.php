@@ -456,12 +456,16 @@ class DefaultController extends CommonController
                 'navs' => ["Parcelles" => "parcelles"]
             ));
         } else if($table == 1){
+            $culturesEntities = $em->getRepository(Culture::class)->getAllforCompany($this->company);
+            $ilotsEntities    = $em->getRepository(Ilot::class)->getAllForCompany($this->company);
             return $this->render('Default/parcelles_map.html.twig', array(
                 'ilots' => [],
                 'campagnes' => $this->campagnes,
                 'campagne_id' => $campagne->id,
                 'parcelles' => $parcelles,
                 'cultures' => [],
+                'cultures_list' => $culturesEntities,
+                'ilots_list'    => $ilotsEntities,
                 'total' => $total,
                 'navs' => ["Parcelles" => "parcelles"]
             ));
@@ -663,6 +667,38 @@ class DefaultController extends CommonController
             }
             $em->remove($link);
         }
+        $em->flush();
+
+        return new JsonResponse(['ok' => true, 'redirect' => $this->generateUrl('parcelles')]);
+    }
+
+    #[Route(path: '/parcelle/create-map', name: 'parcelle_create_map', methods: ['POST'])]
+    public function parcelleCreateMapAction(Request $request): JsonResponse
+    {
+        $this->check_user($request);
+        $em = $this->getDoctrine()->getManager();
+        $campagne = $this->getCurrentCampagne($request);
+
+        $data = json_decode($request->getContent(), true);
+
+        $parcelle = new Parcelle();
+        $parcelle->campagne     = $campagne;
+        $parcelle->active       = 1;
+        $parcelle->name         = $data['name']    ?? 'Nouvelle parcelle';
+        $parcelle->completeName = $data['name']    ?? 'Nouvelle parcelle';
+        $parcelle->surface      = isset($data['surface']) ? round((float)$data['surface'], 4) : 0;
+        $parcelle->geoJson      = $data['geoJson'] ?? null;
+        $parcelle->commune      = $data['commune'] ?? null;
+        $parcelle->comment      = $data['comment'] ?? null;
+
+        if (!empty($data['culture_id'])) {
+            $parcelle->culture = $em->getReference(Culture::class, $data['culture_id']);
+        }
+        if (!empty($data['ilot_id'])) {
+            $parcelle->ilot = $em->getReference(Ilot::class, $data['ilot_id']);
+        }
+
+        $em->persist($parcelle);
         $em->flush();
 
         return new JsonResponse(['ok' => true, 'redirect' => $this->generateUrl('parcelles')]);
