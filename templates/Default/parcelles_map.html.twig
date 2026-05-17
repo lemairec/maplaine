@@ -2,6 +2,7 @@
 
 {% block stylesheets %}
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
 <style>
 .parcellaire-layout {
     display: flex;
@@ -94,6 +95,25 @@
     .parcellaire-sidebar { width: 100%; max-width: none; border-right: none; border-bottom: 1px solid #dee2e6; max-height: 320px; }
     .parcellaire-map { height: 400px; }
 }
+
+/* Barre d'édition contour */
+#edit-contour-bar {
+    display: none;
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2000;
+    background: #1e293b;
+    color: #fff;
+    border-radius: 999px;
+    padding: 10px 20px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+    gap: 10px;
+    align-items: center;
+    white-space: nowrap;
+}
+#edit-contour-bar.visible { display: flex; }
 </style>
 {% endblock %}
 
@@ -198,13 +218,22 @@
   </div>
 </div>
 
+{# Barre flottante édition contour #}
+<div id="edit-contour-bar">
+    <span><i class="icon-pencil"></i> Édition du contour</span>
+    <button class="btn btn-sm btn-success" id="btn-contour-save">✔ Valider</button>
+    <button class="btn btn-sm btn-outline-light" id="btn-contour-cancel">✕ Annuler</button>
+</div>
+
 <script>const CARTE_PARCELLES = {{ carte_data | json_encode | raw }};</script>
 <script>const MERGE_URL = '{{ url('parcelles_merge') }}';</script>
+<script>const GEOJSON_BASE_URL = '{{ url('parcelle_geojson', {'parcelle_id': '__ID__'}) }}';</script>
 
 {% endblock %}
 
 {% block javascripts %}
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
 <script src="https://unpkg.com/@turf/turf@7/turf.min.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
@@ -242,7 +271,13 @@ document.addEventListener('DOMContentLoaded', function () {
         });
 
         const surface = p.surface ? p.surface.toFixed(2) + ' ha' : '—';
-        layer.bindPopup('<b>' + (p.name || '—') + '</b><br/>' + (p.culture ? p.culture + '<br/>' : '') + surface + '<br/><a href="' + p.url + '">Modifier</a>');
+        layer.bindPopup(
+            '<b>' + (p.name || '—') + '</b><br/>' +
+            (p.culture ? p.culture + '<br/>' : '') +
+            surface +
+            '<br/><a href="' + p.url + '">Fiche</a>' +
+            ' &nbsp; <a href="#" class="popup-edit-contour" data-id="' + p.id + '">✏ Contour</a>'
+        );
         layer.bindTooltip('<b>' + (p.name || '—') + '</b><br/>' + surface, { sticky: true });
 
         // Clic sur la carte → sélection bidirectionnelle
@@ -412,6 +447,99 @@ document.addEventListener('DOMContentLoaded', function () {
             else alert('Erreur : ' + (data.error || 'inconnue'));
         })
         .catch(() => alert('Erreur réseau'));
+    });
+
+    // ---- Édition du contour ----
+    const drawLayer = L.featureGroup().addTo(map);
+    const drawControl = new L.Control.Draw({
+        draw: {
+            polygon:     { allowIntersection: false, shapeOptions: { color: '#22c55e', weight: 2 } },
+            polyline:    false,
+            rectangle:   false,
+            circle:      false,
+            marker:      false,
+            circlemarker: false,
+        },
+        edit: { featureGroup: drawLayer, remove: false },
+    });
+
+    let editingId = null;
+    let editingOriginalLayer = null;
+
+    function startEditContour(id) {
+        if (mergeMode) return;
+        map.closePopup();
+        editingId = id;
+
+        // Cacher l'ancienne couche sur la carte principale
+        editingOriginalLayer = layerMap[id];
+        if (editingOriginalLayer) map.removeLayer(editingOriginalLayer);
+
+        // Charger le polygone dans drawLayer
+        drawLayer.clearLayers();
+        const p = dataMap[id];
+        if (p && p.geoJson) {
+            try {
+                const geojson = JSON.parse(p.geoJson);
+                const editLayer = L.geoJSON(geojson, { style: { color: '#22c55e', weight: 3, fillOpacity: 0.3 } });
+                editLayer.eachLayer(l => { drawLayer.addLayer(l); if (l.editing) l.editing.enable(); });
+                map.fitBounds(drawLayer.getBounds(), { padding: [40, 40] });
+            } catch(e) {}
+        }
+
+        map.addControl(drawControl);
+        document.getElementById('edit-contour-bar').classList.add('visible');
+    }
+
+    function stopEditContour(save) {
+        if (!editingId) return;
+
+        if (save) {
+            // Récupérer le geoJson dessiné
+            let newGeoJson = null;
+            const layers = drawLayer.getLayers();
+            if (layers.length > 0) {
+                // Prendre le dernier layer dessiné (ou le seul s'il n'y en a qu'un)
+                const drawn = layers[layers.length - 1];
+                newGeoJson = JSON.stringify(drawn.toGeoJSON().geometry);
+            }
+
+            const url = GEOJSON_BASE_URL.replace('__ID__', editingId);
+            fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ geoJson: newGeoJson }),
+            })
+            .then(r => r.json())
+            .then(function(data) {
+                if (data.ok) window.location.reload();
+                else alert('Erreur lors de la sauvegarde');
+            })
+            .catch(() => alert('Erreur réseau'));
+        } else {
+            // Annuler : remettre l'ancienne couche
+            if (editingOriginalLayer) map.addLayer(editingOriginalLayer);
+        }
+
+        map.removeControl(drawControl);
+        drawLayer.clearLayers();
+        document.getElementById('edit-contour-bar').classList.remove('visible');
+        editingId = null;
+        editingOriginalLayer = null;
+    }
+
+    document.getElementById('btn-contour-save').addEventListener('click', () => stopEditContour(true));
+    document.getElementById('btn-contour-cancel').addEventListener('click', () => stopEditContour(false));
+
+    // Clic sur le lien "✏ Contour" dans le popup
+    map.on('popupopen', function(e) {
+        e.popup.getElement().querySelectorAll('.popup-edit-contour').forEach(function(a) {
+            a.addEventListener('click', function(ev) {
+                ev.preventDefault();
+                const id = this.dataset.id;
+                startEditContour(id);
+            });
+        });
     });
 });
 </script>

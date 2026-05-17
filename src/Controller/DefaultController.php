@@ -668,6 +668,21 @@ class DefaultController extends CommonController
         return new JsonResponse(['ok' => true, 'redirect' => $this->generateUrl('parcelles')]);
     }
 
+    #[Route(path: '/parcelle/{parcelle_id}/geojson', name: 'parcelle_geojson', methods: ['POST'])]
+    public function parcelleGeoJsonAction($parcelle_id, Request $request): JsonResponse
+    {
+        $this->check_user($request);
+        $em = $this->getDoctrine()->getManager();
+        $parcelle = $em->getRepository(Parcelle::class)->find($parcelle_id);
+        if (!$parcelle) {
+            return new JsonResponse(['error' => 'Parcelle introuvable'], 404);
+        }
+        $data = json_decode($request->getContent(), true);
+        $parcelle->geoJson = $data['geoJson'] ?? null;
+        $em->flush();
+        return new JsonResponse(['ok' => true]);
+    }
+
     #[Route(path: '/parcelle/{parcelle_id}/delete', name: 'parcelle_delete')]
     public function parcelleDeleteAction($parcelle_id, Request $request)
     {
