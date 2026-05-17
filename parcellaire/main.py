@@ -63,3 +63,8 @@ def index(request: Request):
 @app.get("/interventions")
 def interventions_page(request: Request):
     return templates.TemplateResponse("interventions.html", {"request": request})
+
+
+@app.get("/cahier-parcellaire")
+def cahier_parcellaire_page(request: Request):
+    return templates.TemplateResponse("cahier_parcellaire.html", {"request": request})

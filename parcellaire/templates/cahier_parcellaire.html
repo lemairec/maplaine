@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+
+{% block title %}Cahier Parcellaire – Gestion Parcellaire{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="/static/css/app.css" />
+<style>
+    body { background: #f8f9fa; }
+    .cahier-sheet {
+        background: #fff;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        break-inside: avoid;
+    }
+    .cahier-header {
+        border-bottom: 1px solid #e9ecef;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.5rem;
+    }
+    .type-pill {
+        border-radius: 999px;
+        padding: 0.15rem 0.5rem;
+        font-size: 0.75rem;
+        font-weight: 600;
+        background: #eef2ff;
+        color: #1e40af;
+        margin-right: 0.25rem;
+    }
+    @media print {
+        nav, .cahier-toolbar { display: none !important; }
+        body { background: #fff; }
+        .container-fluid { max-width: 100%; padding: 0 !important; }
+        .card { box-shadow: none !important; border: 0 !important; }
+        .cahier-sheet { border: 1px solid #ddd; page-break-inside: avoid; }
+    }
+</style>
+{% endblock %}
+
+{% block nav_active_advanced %}active{% endblock %}
+{% block nav_active_cahier_item %}active{% endblock %}
+
+{% block navbar_selectors %}
+<select id="sel-company" class="form-select form-select-sm"></select>
+<select id="sel-campagne" class="form-select form-select-sm"></select>
+<span id="nav-username" class="text-muted small ms-2"></span>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3 px-4">
+    <div class="d-flex justify-content-between align-items-center mb-3 cahier-toolbar">
+        <div>
+            <h4 class="mb-0"><i class="bi bi-journal-richtext"></i> Cahier Parcellaire</h4>
+            <div class="text-muted small">Regroupe toutes les fiches parcelles de la campagne sélectionnée.</div>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary" id="btn-refresh-cahier">
+                <i class="bi bi-arrow-clockwise"></i> Rafraîchir
+            </button>
+            <button class="btn btn-primary" id="btn-print-cahier">
+                <i class="bi bi-printer"></i> Imprimer le cahier
+            </button>
+        </div>
+    </div>
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <span class="badge bg-secondary" id="cahier-count">0 fiche</span>
+                <span class="small text-muted" id="cahier-summary"></span>
+            </div>
+            <div id="cahier-container">
+                <p class="text-muted">Chargement…</p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/cahier_parcellaire.js"></script>
+{% endblock %}
