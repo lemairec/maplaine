@@ -220,7 +220,8 @@
 
 {# Barre flottante édition contour #}
 <div id="edit-contour-bar">
-    <span><i class="icon-pencil"></i> Édition du contour</span>
+    <span>✏ Contour</span>
+    <span id="contour-surface" style="font-weight:600; color:#86efac; min-width:80px; text-align:right;">— ha</span>
     <button class="btn btn-sm btn-success" id="btn-contour-save">✔ Valider</button>
     <button class="btn btn-sm btn-outline-light" id="btn-contour-cancel">✕ Annuler</button>
 </div>
@@ -477,12 +478,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
         // Charger le polygone dans drawLayer
         drawLayer.clearLayers();
+        showSurface(null);
         const p = dataMap[id];
         if (p && p.geoJson) {
             try {
                 const geojson = JSON.parse(p.geoJson);
                 const editLayer = L.geoJSON(geojson, { style: { color: '#22c55e', weight: 3, fillOpacity: 0.3 } });
-                editLayer.eachLayer(l => { drawLayer.addLayer(l); if (l.editing) l.editing.enable(); });
+                editLayer.eachLayer(l => {
+                    drawLayer.addLayer(l);
+                    if (l.editing) l.editing.enable();
+                    const latlngs = l.getLatLngs ? l.getLatLngs()[0] : null;
+                    if (latlngs) showSurface(computeAreaHa(latlngs));
+                });
                 map.fitBounds(drawLayer.getBounds(), { padding: [40, 40] });
             } catch(e) {}
         }
@@ -523,10 +530,62 @@ document.addEventListener('DOMContentLoaded', function () {
 
         map.removeControl(drawControl);
         drawLayer.clearLayers();
+        showSurface(null);
         document.getElementById('edit-contour-bar').classList.remove('visible');
         editingId = null;
         editingOriginalLayer = null;
     }
+
+    // ---- Calcul surface en temps réel ----
+    function showSurface(ha) {
+        document.getElementById('contour-surface').textContent = ha != null ? ha.toFixed(4) + ' ha' : '— ha';
+    }
+
+    function computeAreaHa(latlngs) {
+        // latlngs : tableau de L.LatLng (anneau du polygone)
+        if (!latlngs || latlngs.length < 3) return null;
+        const coords = latlngs.map(ll => [ll.lng, ll.lat]);
+        coords.push(coords[0]); // fermer l'anneau
+        try {
+            const poly = turf.polygon([coords]);
+            return turf.area(poly) / 10000; // m² → ha
+        } catch(e) { return null; }
+    }
+
+    // Pendant le tracé (ajout de chaque sommet)
+    map.on('draw:drawvertex', function(e) {
+        // Récupérer le layer en cours depuis le gestionnaire de dessin
+        const handler = e.layers;
+        if (!handler) return;
+        handler.eachLayer(function(l) {
+            const latlngs = l.getLatLngs ? l.getLatLngs()[0] : null;
+            if (latlngs) showSurface(computeAreaHa(latlngs));
+        });
+    });
+
+    // Après création d'un polygone
+    map.on('draw:created', function(e) {
+        drawLayer.clearLayers();
+        drawLayer.addLayer(e.layer);
+        const latlngs = e.layer.getLatLngs()[0];
+        showSurface(computeAreaHa(latlngs));
+    });
+
+    // Pendant l'édition des sommets
+    map.on('draw:editvertex', function() {
+        drawLayer.eachLayer(function(l) {
+            const latlngs = l.getLatLngs ? l.getLatLngs()[0] : null;
+            if (latlngs) showSurface(computeAreaHa(latlngs));
+        });
+    });
+
+    // Après validation de l'édition
+    map.on('draw:edited', function() {
+        drawLayer.eachLayer(function(l) {
+            const latlngs = l.getLatLngs ? l.getLatLngs()[0] : null;
+            if (latlngs) showSurface(computeAreaHa(latlngs));
+        });
+    });
 
     document.getElementById('btn-contour-save').addEventListener('click', () => stopEditContour(true));
     document.getElementById('btn-contour-cancel').addEventListener('click', () => stopEditContour(false));
