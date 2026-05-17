@@ -502,20 +502,21 @@ document.addEventListener('DOMContentLoaded', function () {
         if (!editingId) return;
 
         if (save) {
-            // Récupérer le geoJson dessiné
             let newGeoJson = null;
+            let newSurface = null;
             const layers = drawLayer.getLayers();
             if (layers.length > 0) {
-                // Prendre le dernier layer dessiné (ou le seul s'il n'y en a qu'un)
                 const drawn = layers[layers.length - 1];
                 newGeoJson = JSON.stringify(drawn.toGeoJSON().geometry);
+                const latlngs = drawn.getLatLngs ? drawn.getLatLngs()[0] : null;
+                if (latlngs) newSurface = computeAreaHa(latlngs);
             }
 
             const url = GEOJSON_BASE_URL.replace('__ID__', editingId);
             fetch(url, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ geoJson: newGeoJson }),
+                body: JSON.stringify({ geoJson: newGeoJson, surface: newSurface }),
             })
             .then(r => r.json())
             .then(function(data) {

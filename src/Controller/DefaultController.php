@@ -679,6 +679,9 @@ class DefaultController extends CommonController
         }
         $data = json_decode($request->getContent(), true);
         $parcelle->geoJson = $data['geoJson'] ?? null;
+        if (isset($data['surface']) && $data['surface'] !== null) {
+            $parcelle->surface = round((float) $data['surface'], 4);
+        }
         $em->flush();
         return new JsonResponse(['ok' => true]);
     }
