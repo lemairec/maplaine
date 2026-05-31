@@ -1,0 +1,41 @@
+{% extends 'base_agri.html.twig' %}
+
+{% block body %}
+
+<div class="card">
+    <div class="card-header">
+        Travaux matériel
+    </div>
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>Date</th>
+                <th>Matériel</th>
+                <th>Début</th>
+                <th>Fin</th>
+                <th>Parcelles</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for travail in travaux %}
+                <tr>
+                    <td>{{ travail.date|date('d/m/Y') }}</td>
+                    <td>{{ travail.materiel.name }}</td>
+                    <td>{{ travail.datetimeBegin|date('H:i') }}</td>
+                    <td>{{ travail.datetimeEnd|date('H:i') }}</td>
+                    <td>
+                        {% for tp in travail.parcelles %}
+                            {{ tp.parcelle.completeName }}{% if not loop.last %}, {% endif %}
+                        {% endfor %}
+                    </td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="5">Aucun travail enregistré.</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% endblock %}

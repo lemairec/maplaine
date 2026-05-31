@@ -53,6 +53,7 @@ Ma Plaine</a>
                             {% endif %}
                             <div class="dropdown-divider"></div>
                             <a class="dropdown-item" href="{{ url('materiels') }}">Materiel</a>
+                            <a class="dropdown-item" href="{{ url('materiels_travail') }}">Travaux matériel</a>
                             {% if app.user.username == "lejard" %}
                             <div class="dropdown-divider"></div>
                             <a class="dropdown-item" href="{{ url('documents') }}">Documents</a>

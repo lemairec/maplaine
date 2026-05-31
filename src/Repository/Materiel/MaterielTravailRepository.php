@@ -28,4 +28,14 @@ class MaterielTravailRepository extends \Doctrine\ORM\EntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    public function getAllByCompany($company): array
+    {
+        return $this->createQueryBuilder('t')
+            ->where('t.company = :company')
+            ->setParameter('company', $company)
+            ->orderBy('t.date', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
 }
