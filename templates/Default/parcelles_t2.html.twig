@@ -5,7 +5,9 @@
 <div class="card">
     <div class="card-header">
         <button type="button" class="btn btn-primary" onclick="window.location.href='{{ url("parcelle", {'parcelle_id': 0}) }}'">{{'Add' | trans }}</button>
-
+        <a href="{{ path('parcelles_map') }}" class="btn btn-outline-secondary" title="Vue carte">
+            ⬡ Carte
+        </a>
         Parcelles
     </div>
 
