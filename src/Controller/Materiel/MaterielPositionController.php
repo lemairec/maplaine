@@ -11,6 +11,7 @@ use App\Controller\CommonController;
 use App\Entity\Company;
 use App\Entity\Campagne;
 use App\Entity\Parcelle;
+use App\Entity\User;
 use App\Entity\Materiel\Materiel;
 use App\Entity\Materiel\MaterielPosition;
 use App\Entity\Materiel\MaterielTravail;
@@ -22,10 +23,13 @@ class MaterielPositionController extends CommonController
      * POST /api/materiel/position
      *
      * Body JSON:
-     *   companie  : company GUID
+     *   user      : user GUID
      *   tracteur  : materiel GUID
      *   latitude  : float
      *   longitude : float
+     *
+     * The company is resolved from the parcelle the position falls into,
+     * searched across all companies the user belongs to.
      */
     #[Route(path: '/api/materiel/position', name: 'api_materiel_position', methods: ['POST'])]
     public function position(Request $request): JsonResponse
@@ -37,9 +41,9 @@ class MaterielPositionController extends CommonController
             return new JsonResponse(['error' => 'Invalid JSON'], 400);
         }
 
-        $company = $em->getRepository(Company::class)->find($data['companie'] ?? '');
-        if (!$company) {
-            return new JsonResponse(['error' => 'Company not found'], 404);
+        $user = $em->getRepository(User::class)->find($data['user'] ?? '');
+        if (!$user) {
+            return new JsonResponse(['error' => 'User not found'], 404);
         }
 
         $materiel = $em->getRepository(Materiel::class)->find($data['tracteur'] ?? '');
@@ -51,6 +55,35 @@ class MaterielPositionController extends CommonController
         $lon = (float) ($data['longitude'] ?? 0);
         $now = new DateTime();
         $today = new DateTime('today');
+
+        $company = null;
+        $companyParcelles = [];
+        foreach ($em->getRepository(Company::class)->getAllForUser($user) as $candidateCompany) {
+            $campagnes = $em->getRepository(Campagne::class)->getAllforCompany($candidateCompany);
+            if (empty($campagnes)) {
+                continue;
+            }
+            $parcelles = $em->getRepository(Parcelle::class)->getAllForCampagneWithoutActive($campagnes[0]);
+
+            foreach ($parcelles as $parcelle) {
+                if (!$parcelle->geoJson) {
+                    continue;
+                }
+                $geo = json_decode($parcelle->geoJson, true);
+                if (!$geo || !isset($geo['coordinates'])) {
+                    continue;
+                }
+                if ($this->isPointInGeoJsonPolygon($lat, $lon, $geo)) {
+                    $company = $candidateCompany;
+                    $companyParcelles = $parcelles;
+                    break 2;
+                }
+            }
+        }
+
+        if (!$company) {
+            $company = $materiel->company;
+        }
 
         $position = new MaterielPosition();
         $position->company = $company;
@@ -75,34 +108,28 @@ class MaterielPositionController extends CommonController
             $em->persist($travail);
         }
 
-        $campagnes = $em->getRepository(Campagne::class)->getAllforCompany($company);
-        if (!empty($campagnes)) {
-            $campagne = $campagnes[0];
-            $parcelles = $em->getRepository(Parcelle::class)->getAllForCampagneWithoutActive($campagne);
+        $alreadyLinked = [];
+        foreach ($travail->parcelles as $tp) {
+            $alreadyLinked[$tp->parcelle->id] = true;
+        }
 
-            $alreadyLinked = [];
-            foreach ($travail->parcelles as $tp) {
-                $alreadyLinked[$tp->parcelle->id] = true;
+        foreach ($companyParcelles as $parcelle) {
+            if (isset($alreadyLinked[$parcelle->id])) {
+                continue;
             }
-
-            foreach ($parcelles as $parcelle) {
-                if (isset($alreadyLinked[$parcelle->id])) {
-                    continue;
-                }
-                if (!$parcelle->geoJson) {
-                    continue;
-                }
-                $geo = json_decode($parcelle->geoJson, true);
-                if (!$geo || !isset($geo['coordinates'])) {
-                    continue;
-                }
-                if ($this->isPointInGeoJsonPolygon($lat, $lon, $geo)) {
-                    $tp = new MaterielTravailParcelle();
-                    $tp->travail = $travail;
-                    $tp->parcelle = $parcelle;
-                    $em->persist($tp);
-                    $alreadyLinked[$parcelle->id] = true;
-                }
+            if (!$parcelle->geoJson) {
+                continue;
+            }
+            $geo = json_decode($parcelle->geoJson, true);
+            if (!$geo || !isset($geo['coordinates'])) {
+                continue;
+            }
+            if ($this->isPointInGeoJsonPolygon($lat, $lon, $geo)) {
+                $tp = new MaterielTravailParcelle();
+                $tp->travail = $travail;
+                $tp->parcelle = $parcelle;
+                $em->persist($tp);
+                $alreadyLinked[$parcelle->id] = true;
             }
         }
 
