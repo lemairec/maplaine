@@ -63,20 +63,25 @@ class MaterielPositionController extends CommonController
             if (empty($campagnes)) {
                 continue;
             }
-            $parcelles = $em->getRepository(Parcelle::class)->getAllForCampagneWithoutActive($campagnes[0]);
 
-            foreach ($parcelles as $parcelle) {
-                if (!$parcelle->geoJson) {
-                    continue;
-                }
-                $geo = json_decode($parcelle->geoJson, true);
-                if (!$geo || !isset($geo['coordinates'])) {
-                    continue;
-                }
-                if ($this->isPointInGeoJsonPolygon($lat, $lon, $geo)) {
-                    $company = $candidateCompany;
-                    $companyParcelles = $parcelles;
-                    break 2;
+            foreach( $campagnes as $campagne) {
+                if ($campagne->isActive()) {
+                    $parcelles = $em->getRepository(Parcelle::class)->getAllForCampagneWithoutActive($campagne);
+                
+                    foreach ($parcelles as $parcelle) {
+                        if (!$parcelle->geoJson) {
+                            continue;
+                        }
+                        $geo = json_decode($parcelle->geoJson, true);
+                        if (!$geo || !isset($geo['coordinates'])) {
+                            continue;
+                        }
+                        if ($this->isPointInGeoJsonPolygon($lat, $lon, $geo)) {
+                            $company = $candidateCompany;
+                            $companyParcelles = $parcelles;
+                            break 2;
+                        }
+                    }
                 }
             }
         }
