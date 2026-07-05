@@ -65,7 +65,7 @@ class MaterielPositionController extends CommonController
             }
 
             foreach( $campagnes as $campagne) {
-                if ($campagne->isActive()) {
+                if (true) {
                     $parcelles = $em->getRepository(Parcelle::class)->getAllForCampagneWithoutActive($campagne);
                 
                     foreach ($parcelles as $parcelle) {
