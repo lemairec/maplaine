@@ -1,0 +1,39 @@
+{% extends 'base_agri.html.twig' %}
+
+
+
+{% form_theme form _self %}
+
+{% block form_row %}
+<div class="form-group row">
+    <div class="col-sm-2">
+        {{ form_label(form) }}
+    </div>
+
+    <div class="col-sm-10">
+        {{ form_widget(form) }}
+    </div>
+    {{ form_errors(form) }}
+</div>
+{% endblock form_row %}
+
+{% block body %}
+
+<div class="card mb-3">
+    <div class="card-body">
+        {{ form_start(form) }}
+        {{ form_row(form.name, {'attr': {'class': 'form-control'}}) }}
+        {{ form_row(form.color, {'attr': {'class': 'form-control jscolor'}}) }}
+        {{ form_widget(form) }}
+
+    <input type="submit" class="btn btn-primary" value="Sauvegarder" />
+    {{ form_end(form) }}
+    </div>
+</div>
+
+{% endblock %}
+
+
+{% block javascripts %}
+<script src="/lib/jscolor-2.0.5/jscolor.js"></script>
+{% endblock %}

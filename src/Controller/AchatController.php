@@ -64,6 +64,7 @@ class AchatController extends CommonController
             $achat->date = new \DateTime();
             if($facture){
                 $achat->facture = $facture;
+                $achat->price_total = $facture->montantHT;
             }
         } else {
             $achat = $em->getRepository(Achat::class)->findOneById($achat_id);

@@ -342,7 +342,7 @@ class DefaultController extends CommonController
             $em->flush();
             return $this->redirectToRoute('campagnes');
         }
-        return $this->render('base_form.html.twig', array(
+        return $this->render('Default/campagne.html.twig', array(
             'form' => $form->createView(),
             'navs' => ["Campagnes" => "campagnes"]
         ));

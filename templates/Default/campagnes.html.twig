@@ -7,15 +7,17 @@
         Campagnes
         <button type="button" class="btn btn-primary" onclick="window.location.href='/campagne/0'">{{'Add' | trans }}</button>
     </div>
-    <table class="table">
-        <tr>
-            <th>{{'Name' | trans }}</th>
-        </tr>
+    <div class="list-group">
         {% for campagne in campagnes2 %}
-        <tr>
-            <td><a href="{{ url("campagne", {'campagne_id': campagne.id}) }}">{{campagne.name}}</a></td>
-        </tr>
+        <div class="list-group-item flex-column align-items-start" style="background-color:{{ campagne.color }};">
+            <div class="d-flex w-100 justify-content-between">
+                <h5 class="mb-1">
+                    <a href="{{ url("campagne", {'campagne_id': campagne.id}) }}">{{campagne.name}}
+                    </a>
+                </h5>
+            </div>
+        </div>
         {% endfor %}
-    </table>
+    </div>
 </div>
 {% endblock %}
