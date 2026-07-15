@@ -58,7 +58,7 @@ class BilanController extends CommonController
             'visibility'=> $visibility
 
         ));
-        //return $this->render('Bilan/fiches_parcellaires_pdf.html.twig', ['parcelles' => $parcelles, 'campagne' => $campagne]);
+        //return $this->render('Bilan/fiches_parcellaires_pdf.html.twig', ['parcelles' => $parcelles, 'campagne' => $campagne, 'visibility'=> $visibility]);
 
         // Configure Dompdf according to your needs
         $pdfOptions = new Options();

@@ -26,8 +26,9 @@
 				</tr>
 
 				<tr>
-                    <td colspan="3">Culture : <strong>{{ parcelle.culture }}</strong></td>
-                    <td colspan="3">Surface : <strong>{{ parcelle.surface | showHa }}</strong></td>
+                    <td colspan="2">Culture : <strong>{{ parcelle.culture }}</strong></td>
+                    <td colspan="2">Precedent : <strong>{{ parcelle.precedent }}</strong></td>
+                    <td colspan="2">Surface : <strong>{{ parcelle.surface | showHa }}</strong></td>
                 </tr>
 
                 {% for variete in parcelle.varietes %}
