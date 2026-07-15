@@ -47,11 +47,24 @@ class AchatController extends CommonController
     {
         $campagne = $this->getCurrentCampagne($request);
         $em = $this->getDoctrine()->getManager();
+
+        $facture = null;
+        $facture_id = $request->query->get('facture_id');
+        if($facture_id){
+            $facture = $em->getRepository(FactureFournisseur::class)->findOneById($facture_id);
+            if($facture && $facture->campagne){
+                $campagne = $facture->campagne;
+            }
+        }
+
         $produits = $em->getRepository(Produit::class)->findByCompany($campagne->company);
         $factures = $em->getRepository(FactureFournisseur::class)->getAllForCampagne($campagne);
         if($achat_id == '0'){
             $achat = new Achat();
             $achat->date = new \DateTime();
+            if($facture){
+                $achat->facture = $facture;
+            }
         } else {
             $achat = $em->getRepository(Achat::class)->findOneById($achat_id);
             $achat->name = $achat->produit->__toString();
@@ -65,6 +78,9 @@ class AchatController extends CommonController
 
         if ($form->isSubmitted()) {
             $em->getRepository(Achat::class)->save($achat, $campagne);
+            if($facture){
+                return $this->redirectToRoute('facture_fournisseur', array('facture_id' => $facture->id));
+            }
             return $this->redirectToRoute('achats');
         }
         return $this->render('Default/achat.html.twig', array(
