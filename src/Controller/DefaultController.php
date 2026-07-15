@@ -338,6 +338,10 @@ class DefaultController extends CommonController
 
 
         if ($form->isSubmitted()) {
+            $pos = strpos($campagne->color, "#");
+            if ($pos === false) {
+                $campagne->color = "#".$campagne->color;
+            }
             $em->persist($campagne);
             $em->flush();
             return $this->redirectToRoute('campagnes');
