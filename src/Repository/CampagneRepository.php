@@ -50,4 +50,18 @@ class CampagneRepository extends \Doctrine\ORM\EntityRepository
         $this->findOrCreate($company, "2018/2019");
     }
 
+    function getPrevious($campagne){
+        $all = $this->getAllforCompany($campagne->company);
+        $found = false;
+        foreach ($all as $c) {
+            if ($found) {
+                return $c;
+            }
+            if ($c->id == $campagne->id) {
+                $found = true;
+            }
+        }
+        return null;
+    }
+
 }

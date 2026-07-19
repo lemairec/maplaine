@@ -8,7 +8,12 @@
         <a href="{{ path('parcelles_map') }}" class="btn btn-outline-secondary" title="Vue carte">
             ⬡ Carte
         </a>
-        
+        {% if parcelles | length == 0 %}
+        <button type="button" id="btn-copy-previous" class="btn btn-outline-primary" title="Copier les parcelles de la campagne précédente">
+            ⧉ Copier campagne précédente
+        </button>
+        {% endif %}
+
         Parcelles
     </div>
 
@@ -93,5 +98,23 @@
 </div>
 {% endif %}
 
+<script>const COPY_PREVIOUS_URL = '{{ url('parcelles_copy_previous') }}';</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const btn = document.getElementById('btn-copy-previous');
+    if (!btn) return;
+    btn.addEventListener('click', function () {
+        if (!confirm('Copier les parcelles de la campagne précédente dans la campagne actuelle ?')) return;
+        btn.disabled = true;
+        fetch(COPY_PREVIOUS_URL, { method: 'POST' })
+            .then(r => r.json())
+            .then(function (data) {
+                if (data.ok) window.location.href = data.redirect || window.location.href;
+                else { alert('Erreur : ' + (data.error || 'inconnue')); btn.disabled = false; }
+            })
+            .catch(() => { alert('Erreur réseau'); btn.disabled = false; });
+    });
+});
+</script>
 
 {% endblock %}

@@ -734,6 +734,48 @@ class DefaultController extends CommonController
         return $this->redirectToRoute('parcelles');
     }
 
+    #[Route(path: '/parcelles/copy-previous', name: 'parcelles_copy_previous', methods: ['POST'])]
+    public function parcellesCopyPreviousAction(Request $request): JsonResponse
+    {
+        $this->check_user($request);
+        $em = $this->getDoctrine()->getManager();
+        $campagne = $this->getCurrentCampagne($request);
+
+        $previous = $em->getRepository(Campagne::class)->getPrevious($campagne);
+        if (!$previous) {
+            return new JsonResponse(['error' => 'Aucune campagne précédente trouvée'], 404);
+        }
+
+        $previousParcelles = $em->getRepository(Parcelle::class)->getAllForCampagne($previous);
+
+        $count = 0;
+        foreach ($previousParcelles as $p) {
+            if (!$p->active) {
+                continue;
+            }
+            $copy = new Parcelle();
+            $copy->campagne     = $campagne;
+            $copy->ilot         = $p->ilot;
+            $copy->active       = 1;
+            $copy->pacage       = $p->pacage;
+            $copy->culture      = $p->culture;
+            $copy->precedent    = $p->precedent;
+            $copy->couvert      = $p->couvert;
+            $copy->ordre        = $p->ordre;
+            $copy->commune      = $p->commune;
+            $copy->surface      = $p->surface;
+            $copy->name         = $p->name;
+            $copy->completeName = $p->completeName;
+            $copy->comment      = $p->comment;
+            $copy->geoJson      = $p->geoJson;
+            $em->persist($copy);
+            $count++;
+        }
+        $em->flush();
+
+        return new JsonResponse(['ok' => true, 'count' => $count, 'redirect' => $this->generateUrl('parcelles')]);
+    }
+
     #[Route(path: '/calendar', name: 'calendar')]
     public function calendar(Request $request)
     {

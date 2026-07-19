@@ -146,6 +146,11 @@
                     <a href="{{ path('parcelles') }}" class="btn btn-sm btn-outline-secondary" title="Vue tableau">
                         ☰ Tableau
                     </a>
+                    {% if parcelles | length == 0 %}
+                    <button id="btn-copy-previous" class="btn btn-sm btn-outline-primary" title="Copier les parcelles de la campagne précédente">
+                        ⧉ Copier campagne précédente
+                    </button>
+                    {% endif %}
                     <button id="btn-mode-fusion" class="btn btn-sm btn-outline-warning" title="Mode fusion">
                         ⊕ Fusionner
                     </button>
@@ -283,6 +288,7 @@
 <script>const MERGE_URL = '{{ url('parcelles_merge') }}';</script>
 <script>const GEOJSON_BASE_URL = '{{ url('parcelle_geojson', {'parcelle_id': '__ID__'}) }}';</script>
 <script>const CREATE_URL = '{{ url('parcelle_create_map') }}';</script>
+<script>const COPY_PREVIOUS_URL = '{{ url('parcelles_copy_previous') }}';</script>
 
 {% endblock %}
 
@@ -449,6 +455,22 @@ document.addEventListener('DOMContentLoaded', function () {
         mergeMode ? exitMergeMode() : enterMergeMode();
     });
     document.getElementById('btn-cancel-merge').addEventListener('click', exitMergeMode);
+
+    // ---- Copie des parcelles de la campagne précédente ----
+    const btnCopyPrevious = document.getElementById('btn-copy-previous');
+    if (btnCopyPrevious) {
+        btnCopyPrevious.addEventListener('click', function () {
+            if (!confirm('Copier les parcelles de la campagne précédente dans la campagne actuelle ?')) return;
+            btnCopyPrevious.disabled = true;
+            fetch(COPY_PREVIOUS_URL, { method: 'POST' })
+                .then(r => r.json())
+                .then(function (data) {
+                    if (data.ok) window.location.href = data.redirect || window.location.href;
+                    else { alert('Erreur : ' + (data.error || 'inconnue')); btnCopyPrevious.disabled = false; }
+                })
+                .catch(() => { alert('Erreur réseau'); btnCopyPrevious.disabled = false; });
+        });
+    }
 
     // Ouvrir modal de confirmation
     document.getElementById('btn-do-merge').addEventListener('click', function () {
