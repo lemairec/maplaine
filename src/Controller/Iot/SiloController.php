@@ -49,6 +49,11 @@ class SiloController extends CommonController
         $t2 = $request->query->get("t2");
         $t3 = $request->query->get("t3");
         $t4 = $request->query->get("t4");
+        $t5 = $request->query->get("t5");
+        $t6 = $request->query->get("t6");
+        $t7 = $request->query->get("t7");
+        $t8 = $request->query->get("t8");
+        $t9 = $request->query->get("t9");
         $te = $request->query->get("te");
         $balise_str = $request->query->get("balise");
         $company = $request->query->get("company");
@@ -62,6 +67,11 @@ class SiloController extends CommonController
         $this->addTemperature($em,$t2,$balise_str."_2", $company);
         $this->addTemperature($em,$t3,$balise_str."_3", $company);
         $this->addTemperature($em,$t4,$balise_str."_4", $company);
+        $this->addTemperature($em,$t5,$balise_str."_5", $company);
+        $this->addTemperature($em,$t6,$balise_str."_6", $company);
+        $this->addTemperature($em,$t7,$balise_str."_7", $company);
+        $this->addTemperature($em,$t8,$balise_str."_8", $company);
+        $this->addTemperature($em,$t9,$balise_str."_9", $company);
         $this->addTemperature($em,$te,$balise_str."_e", $company);
 
         return new Response("ok");
