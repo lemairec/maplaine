@@ -65,6 +65,9 @@ class Balise
     public $diff = NULL;
 
     public function isInRange($value){
+        if($this->my_min === NULL || $this->my_max === NULL){
+            return true;
+        }
         return $value !== NULL && $value >= $this->my_min && $value <= $this->my_max;
     }
 
