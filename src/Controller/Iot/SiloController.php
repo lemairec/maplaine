@@ -135,8 +135,9 @@ class SiloController extends CommonController
 
         foreach($temperatures as $temperature){
             $temperature->calculate = $balise->calculFor($temperature->temp);
-            $chartjs_min['data'][] = ['date' => $temperature->datetime->format("Y-m-d H:i:s"), 'value' => $temperature->calculate, 'name' => "" ];
-            
+            if($balise->isInRange($temperature->calculate)){
+                $chartjs_min['data'][] = ['date' => $temperature->datetime->format("Y-m-d H:i:s"), 'value' => $temperature->calculate, 'name' => "" ];
+            }
         }
         $chartjss[] = $chartjs_min;
         //dump($chartjss);

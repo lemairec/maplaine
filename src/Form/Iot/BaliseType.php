@@ -18,6 +18,8 @@ class BaliseType extends AbstractType
             ->add('unity')
             ->add('offset')
             ->add('scale')
+            ->add('my_min')
+            ->add('my_max')
         ;
     }
 

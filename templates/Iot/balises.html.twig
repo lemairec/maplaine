@@ -30,7 +30,9 @@
                         {{balise.last_update | showDatetime }}
                     </div>
                     <div class="col-md-2">
-                         {{balise.last_calculate | showUnity(balise.unity) }}
+                        {% if balise.isInRange(balise.last_calculate) %}
+                            {{balise.last_calculate | showUnity(balise.unity) }}
+                        {% endif %}
                     </div>
                 </div>
 
@@ -61,7 +63,9 @@
                         {{balise.last_update | showDatetime }}
                     </div>
                     <div class="col-md-2">
-                        {{balise.last_temp | showUnity("°") }}
+                        {% if balise.isInRange(balise.last_temp) %}
+                            {{balise.last_temp | showUnity("°") }}
+                        {% endif %}
                     </div>
                 </div>
 

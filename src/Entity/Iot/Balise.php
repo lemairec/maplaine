@@ -56,7 +56,17 @@ class Balise
     #[ORM\Column(type: 'float', nullable: true)]
     public $last_calculate;
 
+    #[ORM\Column(type: 'float', nullable: true)]
+    public $my_min = -20;
+
+    #[ORM\Column(type: 'float', nullable: true)]
+    public $my_max = 50;
+
     public $diff = NULL;
+
+    public function isInRange($value){
+        return $value !== NULL && $value >= $this->my_min && $value <= $this->my_max;
+    }
 
     public function calculateBalise(){
         $this->last_calculate = $this->last_temp;
