@@ -15,6 +15,7 @@
                     <a href="{{ url("silo_balise", {'id': balise.id}) }}">{{balise.label}}
                     </a>
                 </h5>
+                <button type="button" class="btn btn-danger" onclick="if(confirm('Supprimer cette balise ?')){window.location.href='{{ url("silo_balise_d", {'id': balise.id}) }}';}">Supprimer</button>
             </div>
 
             <div class="row" style="min-height: 1.5rem;">

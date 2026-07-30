@@ -150,4 +150,23 @@ class SiloController extends CommonController
         ));
     }
 
+    #[Route(path: '/silo/balise/{id}/delete', name: 'silo_balise_d')]
+    public function siloBaliseDelete($id, Request $request)
+    {
+        $this->check_user($request);
+        $em = $this->getDoctrine()->getManager();
+
+        $balise = $em->getRepository(Balise::class)->find($id);
+        if ($balise) {
+            $temperatures = $em->getRepository(Temperature::class)->findBy(['balise' => $balise]);
+            foreach ($temperatures as $temperature) {
+                $em->remove($temperature);
+            }
+            $em->remove($balise);
+            $em->flush();
+        }
+
+        return $this->redirectToRoute('silo_balises');
+    }
+
 }

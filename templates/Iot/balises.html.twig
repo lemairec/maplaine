@@ -34,6 +34,9 @@
                             {{balise.last_calculate | showUnity(balise.unity) }}
                         {% endif %}
                     </div>
+                    <div class="col-md-2">
+                        <a href="{{ url("silo_balise_d", {'id': balise.id}) }}" onclick="return confirm('Supprimer cette balise ?');">Supprimer</a>
+                    </div>
                 </div>
 
             </div>
@@ -66,6 +69,9 @@
                         {% if balise.isInRange(balise.last_temp) %}
                             {{balise.last_temp | showUnity("°") }}
                         {% endif %}
+                    </div>
+                    <div class="col-md-2">
+                        <a href="{{ url("silo_balise_d", {'id': balise.id}) }}" onclick="return confirm('Supprimer cette balise ?');">Supprimer</a>
                     </div>
                 </div>
 
