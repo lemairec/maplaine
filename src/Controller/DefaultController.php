@@ -676,6 +676,82 @@ class DefaultController extends CommonController
         return new JsonResponse(['ok' => true, 'redirect' => $this->generateUrl('parcelles')]);
     }
 
+    #[Route(path: '/parcelles/split', name: 'parcelles_split', methods: ['POST'])]
+    public function parcellesSplitAction(Request $request): JsonResponse
+    {
+        $this->check_user($request);
+        $em = $this->getDoctrine()->getManager();
+
+        $data = json_decode($request->getContent(), true);
+        $id      = $data['parcelle_id'] ?? null;
+        $nameA   = trim($data['name_a'] ?? '');
+        $nameB   = trim($data['name_b'] ?? '');
+        $geoJsonA = $data['geoJson_a'] ?? null;
+        $geoJsonB = $data['geoJson_b'] ?? null;
+        $surfaceA = $data['surface_a'] ?? null;
+        $surfaceB = $data['surface_b'] ?? null;
+
+        if (!$id || !$nameA || !$nameB || !$geoJsonA || !$geoJsonB) {
+            return new JsonResponse(['error' => 'Données invalides'], 400);
+        }
+
+        $original = $em->getRepository(Parcelle::class)->find($id);
+        if (!$original) {
+            return new JsonResponse(['error' => 'Parcelle introuvable'], 404);
+        }
+
+        $links = $em->getRepository(InterventionParcelle::class)
+            ->createQueryBuilder('ip')
+            ->where('ip.parcelle = :id')
+            ->setParameter('id', $original->id)
+            ->getQuery()->getResult();
+
+        $original->active = 0;
+
+        $partA = new Parcelle();
+        $partA->campagne     = $original->campagne;
+        $partA->ilot         = $original->ilot;
+        $partA->culture      = $original->culture;
+        $partA->active       = 1;
+        $partA->name         = $nameA;
+        $partA->completeName = $nameA;
+        $partA->surface      = $surfaceA !== null ? round((float) $surfaceA, 4) : 0;
+        $partA->commune      = $original->commune;
+        $partA->geoJson      = $geoJsonA;
+
+        $partB = new Parcelle();
+        $partB->campagne     = $original->campagne;
+        $partB->ilot         = $original->ilot;
+        $partB->culture      = $original->culture;
+        $partB->active       = 1;
+        $partB->name         = $nameB;
+        $partB->completeName = $nameB;
+        $partB->surface      = $surfaceB !== null ? round((float) $surfaceB, 4) : 0;
+        $partB->commune      = $original->commune;
+        $partB->geoJson      = $geoJsonB;
+
+        $em->persist($partA);
+        $em->persist($partB);
+        $em->flush();
+
+        foreach ($links as $link) {
+            $linkA = new InterventionParcelle();
+            $linkA->intervention = $link->intervention;
+            $linkA->parcelle     = $partA;
+            $em->persist($linkA);
+
+            $linkB = new InterventionParcelle();
+            $linkB->intervention = $link->intervention;
+            $linkB->parcelle     = $partB;
+            $em->persist($linkB);
+
+            $em->remove($link);
+        }
+        $em->flush();
+
+        return new JsonResponse(['ok' => true, 'redirect' => $this->generateUrl('parcelles')]);
+    }
+
     #[Route(path: '/parcelle/create-map', name: 'parcelle_create_map', methods: ['POST'])]
     public function parcelleCreateMapAction(Request $request): JsonResponse
     {

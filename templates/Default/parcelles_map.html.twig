@@ -114,6 +114,25 @@
     white-space: nowrap;
 }
 #edit-contour-bar.visible { display: flex; }
+
+/* Barre de coupe */
+#split-bar {
+    display: none;
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2000;
+    background: #1e293b;
+    color: #fff;
+    border-radius: 999px;
+    padding: 10px 20px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+    gap: 10px;
+    align-items: center;
+    white-space: nowrap;
+}
+#split-bar.visible { display: flex; }
 </style>
 {% endblock %}
 
@@ -236,6 +255,40 @@
     <button class="btn btn-sm btn-outline-light" id="btn-contour-cancel">✕ Annuler</button>
 </div>
 
+{# Barre flottante coupe de parcelle #}
+<div id="split-bar">
+    <span>✂ Tracez une ligne traversant la parcelle pour la couper en 2</span>
+    <button class="btn btn-sm btn-outline-light" id="btn-split-cancel">✕ Annuler</button>
+</div>
+
+{# Modal : nommer les 2 parcelles issues de la coupe #}
+<div class="modal fade" id="modal-split" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Couper la parcelle</h5>
+        <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-3">
+          <label class="form-label font-weight-bold">Nom de la 1<sup>re</sup> partie</label>
+          <input type="text" class="form-control" id="split-name-a" placeholder="Ex : Parcelle A" />
+          <div class="text-success small mt-1" id="split-surface-a">— ha</div>
+        </div>
+        <div class="mb-2">
+          <label class="form-label font-weight-bold">Nom de la 2<sup>e</sup> partie</label>
+          <input type="text" class="form-control" id="split-name-b" placeholder="Ex : Parcelle B" />
+          <div class="text-success small mt-1" id="split-surface-b">— ha</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-dismiss="modal">Annuler</button>
+        <button class="btn btn-danger" id="btn-confirm-split">✂ Couper</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 {# Modal : nouvelle parcelle #}
 <div class="modal fade" id="modal-new-parcelle" tabindex="-1">
   <div class="modal-dialog">
@@ -289,6 +342,7 @@
 <script>const GEOJSON_BASE_URL = '{{ url('parcelle_geojson', {'parcelle_id': '__ID__'}) }}';</script>
 <script>const CREATE_URL = '{{ url('parcelle_create_map') }}';</script>
 <script>const COPY_PREVIOUS_URL = '{{ url('parcelles_copy_previous') }}';</script>
+<script>const SPLIT_URL = '{{ url('parcelles_split') }}';</script>
 
 {% endblock %}
 
@@ -337,7 +391,8 @@ document.addEventListener('DOMContentLoaded', function () {
             (p.culture ? p.culture + '<br/>' : '') +
             surface +
             '<br/><a href="' + p.url + '">Fiche</a>' +
-            ' &nbsp; <a href="#" class="popup-edit-contour" data-id="' + p.id + '">✏ Contour</a>'
+            ' &nbsp; <a href="#" class="popup-edit-contour" data-id="' + p.id + '">✏ Contour</a>' +
+            ' &nbsp; <a href="#" class="popup-split" data-id="' + p.id + '">✂ Couper</a>'
         );
         layer.bindTooltip('<b>' + (p.name || '—') + '</b><br/>' + surface, { sticky: true });
 
@@ -631,6 +686,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Pendant le tracé (ajout de chaque sommet)
     map.on('draw:drawvertex', function(e) {
+        if (splitMode) return; // la ligne de coupe n'a pas de "surface" à afficher ici
         // Récupérer le layer en cours depuis le gestionnaire de dessin
         const handler = e.layers;
         if (!handler) return;
@@ -642,11 +698,45 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Après création d'un polygone (mode édition contour seulement)
     map.on('draw:created', function(e) {
-        if (drawMode) return; // géré par le listener du mode "nouvelle parcelle"
+        if (drawMode || splitMode) return; // gérés par leurs propres listeners
         drawLayer.clearLayers();
         drawLayer.addLayer(e.layer);
         const latlngs = e.layer.getLatLngs()[0];
         showSurface(computeAreaHa(latlngs));
+    });
+
+    // Après tracé de la ligne de coupe (mode split)
+    map.on('draw:created', function (e) {
+        if (!splitMode) return;
+        const lineCoords = e.layer.getLatLngs().map(ll => [ll.lng, ll.lat]);
+        if (lineCoords.length < 2) return;
+
+        const p = dataMap[splitTargetId];
+        if (!p || !p.geoJson) { alert('Contour introuvable pour cette parcelle'); return; }
+
+        let polygonGeoJson;
+        try { polygonGeoJson = JSON.parse(p.geoJson); } catch (e2) { alert('Contour invalide'); return; }
+
+        const result = splitPolygonByLine(polygonGeoJson, lineCoords);
+        if (!result) {
+            alert("Impossible de couper la parcelle avec cette ligne : tracez une ligne qui traverse bien la parcelle de part en part.");
+            return;
+        }
+
+        splitResult = result;
+        splitPreviewLayer.clearLayers();
+        L.geoJSON(result.partA, { style: { color: '#2563eb', weight: 2, fillOpacity: 0.4 } }).addTo(splitPreviewLayer);
+        L.geoJSON(result.partB, { style: { color: '#dc2626', weight: 2, fillOpacity: 0.4 } }).addTo(splitPreviewLayer);
+        map.removeControl(splitDrawControl);
+
+        const surfaceA = turf.area(result.partA) / 10000;
+        const surfaceB = turf.area(result.partB) / 10000;
+
+        document.getElementById('split-name-a').value = '';
+        document.getElementById('split-name-b').value = '';
+        document.getElementById('split-surface-a').textContent = surfaceA.toFixed(4) + ' ha';
+        document.getElementById('split-surface-b').textContent = surfaceB.toFixed(4) + ' ha';
+        $('#modal-split').modal('show');
     });
 
     // Pendant l'édition des sommets
@@ -667,6 +757,134 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById('btn-contour-save').addEventListener('click', () => stopEditContour(true));
     document.getElementById('btn-contour-cancel').addEventListener('click', () => stopEditContour(false));
+
+    // ---- Coupe d'une parcelle en 2 ----
+    let splitMode = false;
+    let splitTargetId = null;
+    let splitOriginalLayer = null;
+    let splitResult = null; // { partA, partB } (Features Turf)
+    const splitPreviewLayer = L.featureGroup().addTo(map);
+
+    const splitDrawControl = new L.Control.Draw({
+        draw: {
+            polyline:     { shapeOptions: { color: '#dc2626', weight: 3 } },
+            polygon:      false, rectangle: false, circle: false, marker: false, circlemarker: false,
+        },
+        edit: false,
+    });
+
+    function enterSplitMode(id) {
+        if (mergeMode) exitMergeMode();
+        if (drawMode) exitDrawMode();
+        map.closePopup();
+        splitMode = true;
+        splitTargetId = id;
+
+        splitOriginalLayer = layerMap[id];
+        if (splitOriginalLayer) map.removeLayer(splitOriginalLayer);
+
+        document.getElementById('split-bar').classList.add('visible');
+        map.addControl(splitDrawControl);
+    }
+
+    function exitSplitMode() {
+        if (splitOriginalLayer) map.addLayer(splitOriginalLayer);
+        splitMode = false;
+        splitTargetId = null;
+        splitOriginalLayer = null;
+        splitResult = null;
+        splitPreviewLayer.clearLayers();
+        document.getElementById('split-bar').classList.remove('visible');
+        try { map.removeControl(splitDrawControl); } catch (e) {}
+    }
+
+    // Coupe un polygone en 2 avec une ligne : construit un très grand demi-plan
+    // le long de la ligne (étendue au-delà du polygone) puis intersecte/soustrait.
+    function splitPolygonByLine(polygonGeoJson, lineCoords) {
+        const p1 = lineCoords[0];
+        const p2 = lineCoords[lineCoords.length - 1];
+
+        const polyFeature = polygonGeoJson.type === 'Feature' ? polygonGeoJson : turf.feature(polygonGeoJson);
+        const bbox = turf.bbox(polyFeature);
+        const span = Math.max(bbox[2] - bbox[0], bbox[3] - bbox[1]) || 0.001;
+        const ext = span * 20;
+
+        let dx = p2[0] - p1[0];
+        let dy = p2[1] - p1[1];
+        const len = Math.sqrt(dx * dx + dy * dy) || 1;
+        dx /= len; dy /= len;
+
+        const A = [p1[0] - dx * ext, p1[1] - dy * ext];
+        const B = [p2[0] + dx * ext, p2[1] + dy * ext];
+        const nx = -dy, ny = dx;
+        const C = [B[0] + nx * ext, B[1] + ny * ext];
+        const D = [A[0] + nx * ext, A[1] + ny * ext];
+
+        const halfPlane = turf.polygon([[A, B, C, D, A]]);
+
+        try {
+            const partA = turf.intersect(turf.featureCollection([polyFeature, halfPlane]));
+            if (!partA) return null;
+            const partB = turf.difference(turf.featureCollection([polyFeature, partA]));
+            if (!partB) return null;
+            return { partA: partA, partB: partB };
+        } catch (e) {
+            console.warn('Découpe Turf échouée', e);
+            return null;
+        }
+    }
+
+    document.getElementById('btn-split-cancel').addEventListener('click', exitSplitMode);
+
+    $('#modal-split').on('hidden.bs.modal', function () {
+        if (splitMode && splitResult) exitSplitMode();
+    });
+
+    document.getElementById('btn-confirm-split').addEventListener('click', function () {
+        const nameA = document.getElementById('split-name-a').value.trim();
+        const nameB = document.getElementById('split-name-b').value.trim();
+        if (!nameA) { document.getElementById('split-name-a').focus(); return; }
+        if (!nameB) { document.getElementById('split-name-b').focus(); return; }
+        if (!splitResult) return;
+
+        const surfaceA = turf.area(splitResult.partA) / 10000;
+        const surfaceB = turf.area(splitResult.partB) / 10000;
+
+        fetch(SPLIT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                parcelle_id: splitTargetId,
+                name_a:      nameA,
+                name_b:      nameB,
+                geoJson_a:   JSON.stringify(splitResult.partA.geometry),
+                geoJson_b:   JSON.stringify(splitResult.partB.geometry),
+                surface_a:   surfaceA,
+                surface_b:   surfaceB,
+            }),
+        })
+        .then(r => r.json())
+        .then(function (data) {
+            if (data.ok) {
+                splitResult = null; // éviter le retour en mode coupe via hidden.bs.modal
+                $('#modal-split').modal('hide');
+                window.location.href = data.redirect || window.location.href;
+            } else {
+                alert('Erreur : ' + (data.error || 'inconnue'));
+            }
+        })
+        .catch(() => alert('Erreur réseau'));
+    });
+
+    // Clic sur le lien "✂ Couper" dans le popup
+    map.on('popupopen', function (e) {
+        e.popup.getElement().querySelectorAll('.popup-split').forEach(function (a) {
+            a.addEventListener('click', function (ev) {
+                ev.preventDefault();
+                enterSplitMode(this.dataset.id);
+            });
+        });
+    });
 
     // ---- Mode dessin nouvelle parcelle ----
     let drawMode = false;
