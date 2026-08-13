@@ -21,8 +21,13 @@ use App\Form\MetaCultureType;
 
 class AdminController extends CommonController
 {
+        #[Route(path: '/admin', name: 'admin')]
+        public function adminAction(Request $request){
+            return new Response('Admin page');
+        }
 
-        #[Route(path: '/admin/users', name: 'admin_users')]
+
+        #[Route(path: '/admin456/users', name: 'admin_users')]
         public function adminUsersAction(Request $request)
         {
             $em = $this->getDoctrine()->getManager();
@@ -60,7 +65,7 @@ class AdminController extends CommonController
 
         }
 
-        #[Route(path: '/admin/groups', name: 'admin_groups')]
+        #[Route(path: '/admin456/groups', name: 'admin_groups')]
         public function adminGroupsAction(Request $request)
         {
             $em = $this->getDoctrine()->getManager();
@@ -72,7 +77,7 @@ class AdminController extends CommonController
 
         }
 
-        #[Route(path: 'admin/group/{id}', name: 'admin_group')]
+        #[Route(path: '/admin456/group/{id}', name: 'admin_group')]
         public function adminGroupAction($id, Request $request)
         {
             $em = $this->getDoctrine()->getManager();
@@ -96,7 +101,7 @@ class AdminController extends CommonController
             ));
         }
 
-        #[Route(path: 'admin/user/{id}', name: 'admin_user')]
+        #[Route(path: '/admin456/user/{id}', name: 'admin_user')]
         public function adminUserAction($id, Request $request)
         {
             $em = $this->getDoctrine()->getManager();
@@ -120,7 +125,7 @@ class AdminController extends CommonController
             ));
         }
 
-        #[Route(path: '/admin/companies', name: 'admin_companies')]
+        #[Route(path: '/admin456/companies', name: 'admin_companies')]
         public function adminCompaniesAction(Request $request)
         {
             $em = $this->getDoctrine()->getManager();
@@ -132,7 +137,7 @@ class AdminController extends CommonController
 
         }
 
-        #[Route(path: '/admin/company/{id}', name: 'admin_company')]
+        #[Route(path: '/admin456/company/{id}', name: 'admin_company')]
         public function adminCompanyeAction($id, Request $request)
         {
             $em = $this->getDoctrine()->getManager();
@@ -155,7 +160,7 @@ class AdminController extends CommonController
             ));
         }
 
-        #[Route(path: '/admin/metacultures', name: 'admin_metacultures')]
+        #[Route(path: '/admin456/metacultures', name: 'admin_metacultures')]
         public function adminMetaCulturesAction(Request $request)
         {
             $em = $this->getDoctrine()->getManager();
@@ -167,7 +172,7 @@ class AdminController extends CommonController
 
         }
 
-        #[Route(path: '/admin/metaculture/{id}', name: 'admin_metaculture')]
+        #[Route(path: '/admin456/metaculture/{id}', name: 'admin_metaculture')]
         public function adminMetaCultureAction($id, Request $request)
         {
             $em = $this->getDoctrine()->getManager();
