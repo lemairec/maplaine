@@ -41,6 +41,12 @@ class Balise
     #[ORM\Column(type: 'string', length: 255, nullable: true)]
     public $unity = "°C";
 
+    #[ORM\Column(type: 'string', length: 255, nullable: true)]
+    public $my_version;
+
+    #[ORM\Column(type: 'integer', nullable: true)]
+    public $wifi = 0;
+
     #[ORM\Column(type: 'datetime', nullable: true)]
     public $last_update;
 
@@ -48,7 +54,7 @@ class Balise
     public $last_temp;
 
     #[ORM\Column(type: 'float', nullable: true)]
-    public $offset = 0;
+    public $my_offset = 0;
 
     #[ORM\Column(type: 'float', nullable: true)]
     public $scale = 0;
@@ -73,8 +79,8 @@ class Balise
 
     public function calculateBalise(){
         $this->last_calculate = $this->last_temp;
-        if($this->offset){
-            $this->last_calculate = $this->last_calculate - $this->offset;
+        if($this->my_offset){
+            $this->last_calculate = $this->last_calculate - $this->my_offset;
         }
         if($this->scale){
             $this->last_calculate = $this->last_calculate * $this->scale;
@@ -95,8 +101,8 @@ class Balise
 
     public function calculFor($value){
         $res = $value;
-        if($this->offset){
-            $res = $res - $this->offset;
+        if($this->my_offset){
+            $res = $res - $this->my_offset;
         }
         if($this->scale){
             $res = $res * $this->scale;

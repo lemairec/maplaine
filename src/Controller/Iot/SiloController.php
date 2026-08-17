@@ -22,7 +22,7 @@ use App\Form\Iot\BaliseType;
 class SiloController extends CommonController
 {
 
-    public function addTemperature($em, $t, $balise_str, $company){
+    public function addTemperature($em, $t, $balise_str, $company, $version, $wifi){
         if($t){
             $balise_ = $em->getRepository(Balise::class)->getOrCreate($company, $balise_str);
             $temperature = new Temperature();
@@ -34,10 +34,13 @@ class SiloController extends CommonController
             }
             $balise_->last_temp = $t;
             $balise_->last_update = new DateTime();
+            $balise_->my_version = $version;
+            $balise_->wifi = $wifi;
             $balise_->calculateBalise();
             $em->persist($balise_);
             $em->flush();
         }
+        
     }
 
     #[Route(path: '/silo/api_sonde', name: 'silo_api')]
@@ -57,24 +60,26 @@ class SiloController extends CommonController
         $te = $request->query->get("te");
         $balise_str = $request->query->get("balise");
         $company = $request->query->get("company");
+        $version = $request->query->get("v");
+        $wifi = $request->query->get("wifi");
 
         $company = $em->getRepository(Company::class)->findOneByName($company);
         if($company == null){
             throw new \Exception("not found Company : ".$company.",".$balise_str);
         }
 
-        $this->addTemperature($em,$t1,$balise_str."_1", $company);
-        $this->addTemperature($em,$t2,$balise_str."_2", $company);
-        $this->addTemperature($em,$t3,$balise_str."_3", $company);
-        $this->addTemperature($em,$t4,$balise_str."_4", $company);
-        $this->addTemperature($em,$t5,$balise_str."_5", $company);
-        $this->addTemperature($em,$t6,$balise_str."_6", $company);
-        $this->addTemperature($em,$t7,$balise_str."_7", $company);
-        $this->addTemperature($em,$t8,$balise_str."_8", $company);
-        $this->addTemperature($em,$t9,$balise_str."_9", $company);
-        $this->addTemperature($em,$te,$balise_str."_e", $company);
+        $this->addTemperature($em,$t1,$balise_str."_1", $company, $version, $wifi);
+        $this->addTemperature($em,$t2,$balise_str."_2", $company, $version, $wifi);
+        $this->addTemperature($em,$t3,$balise_str."_3", $company, $version, $wifi);
+        $this->addTemperature($em,$t4,$balise_str."_4", $company, $version, $wifi);
+        $this->addTemperature($em,$t5,$balise_str."_5", $company, $version, $wifi);
+        $this->addTemperature($em,$t6,$balise_str."_6", $company, $version, $wifi);
+        $this->addTemperature($em,$t7,$balise_str."_7", $company, $version, $wifi);
+        $this->addTemperature($em,$t8,$balise_str."_8", $company, $version, $wifi);
+        $this->addTemperature($em,$t9,$balise_str."_9", $company, $version, $wifi);
+        $this->addTemperature($em,$te,$balise_str."_e", $company, $version, $wifi);
 
-        return new Response("ok");
+        return new Response("ok2");
     }
 
 

@@ -12,11 +12,15 @@ class BaliseType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options)
     {
         $builder
-            ->add('name')
+            ->add('name', null, [
+                'disabled' => true,
+            ])
             ->add('label')
             ->add('description')
             ->add('unity')
-            ->add('offset')
+            ->add('my_offset')
+            ->add('my_version')
+            ->add('wifi')
             ->add('scale')
             ->add('my_min')
             ->add('my_max')
