@@ -43,7 +43,10 @@ class Moteur
     public $my_last_value;
 
     #[ORM\Column(type: 'integer', nullable: true)]
-    public $ecart_temperature;
+    public $ecart_temperature_hc;
+
+    #[ORM\Column(type: 'integer', nullable: true)]
+    public $ecart_temperature_hp;
 
     #[ORM\Column(type: 'integer', nullable: true)]
     public $is_auto;
@@ -57,6 +60,12 @@ class Moteur
     public $desired;
 
     public $debug;
+
+    public function isHeureCreuse(): bool
+    {
+        $heure = (int) date('H');
+        return $heure >= 22 || $heure < 6;
+    }
 
     public function calculate(){
         $this->debug = 'init';
@@ -107,8 +116,8 @@ class Moteur
 
         $balise_temp = $this->balise->last_temp;
         $temperature_ext = $this->last_temperature;
-        $diff = $this->ecart_temperature;
-        
+        $diff = $this->isHeureCreuse() ? $this->ecart_temperature_hc : $this->ecart_temperature_hp;
+
         if($balise_temp > $temperature_ext + $diff){
             $this->debug = 'ok 1';
             $this->desired = 1;

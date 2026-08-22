@@ -15,7 +15,8 @@ class MoteurType extends AbstractType
             ->add('name')
             ->add('label')
             ->add('description')
-            ->add('ecart_temperature')
+            ->add('ecart_temperature_hc')
+            ->add('ecart_temperature_hp')
             ->add('balise')
             ->add('is_auto')
         ;

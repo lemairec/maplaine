@@ -40,7 +40,11 @@
                         T° ext {{moteur.last_temperature | showUnity("°C") }}
                     </div>
                     <div class="col-md-2">
-                        diff {{moteur.ecart_temperature | showUnity("°C") }}
+                        {%if moteur.isHeureCreuse() %}
+                            diff HC {{moteur.ecart_temperature_hc | showUnity("°C") }}
+                        {% else %}
+                            diff HP {{moteur.ecart_temperature_hp | showUnity("°C") }}
+                        {% endif %}
                     </div>
                 </div>
 
