@@ -4,6 +4,7 @@ namespace App\Form\Iot;
 
 use App\Entity\Iot\Moteur;
 use Symfony\Component\Form\AbstractType;
+use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\FormBuilderInterface;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
@@ -17,7 +18,14 @@ class MoteurType extends AbstractType
             ->add('description')
             ->add('ecart_temperature_hc')
             ->add('ecart_temperature_hp')
-            ->add('balise')
+            ->add('type_temperature', ChoiceType::class, [
+                'choices' => [
+                    'Balise' => 'balise',
+                    'Température fixe' => 'fixe',
+                ],
+            ])
+            ->add('balise', null, ['required' => false])
+            ->add('temperature_fixe', null, ['required' => false])
             ->add('is_auto')
         ;
     }

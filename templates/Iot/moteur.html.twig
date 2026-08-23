@@ -2,6 +2,27 @@
 
 {% block body_form %}
 
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        var typeSelect = document.getElementById('{{ form.type_temperature.vars.id }}');
+        var baliseRow = document.getElementById('{{ form.balise.vars.id }}').closest('.form-group.row');
+        var temperatureFixeRow = document.getElementById('{{ form.temperature_fixe.vars.id }}').closest('.form-group.row');
+
+        function toggleTemperatureFields() {
+            if (typeSelect.value === 'fixe') {
+                baliseRow.style.display = 'none';
+                temperatureFixeRow.style.display = '';
+            } else {
+                baliseRow.style.display = '';
+                temperatureFixeRow.style.display = 'none';
+            }
+        }
+
+        typeSelect.addEventListener('change', toggleTemperatureFields);
+        toggleTemperatureFields();
+    });
+    </script>
+
     <div class="card">
     <div class="list-group">
         <div class="list-group-item flex-column align-items-start">
@@ -45,6 +66,19 @@
 
         </div>
         <div class="list-group-item flex-column align-items-start">
+            {%if moteur.type_temperature == 'fixe' %}
+                <div class="d-flex w-100 justify-content-between">
+                    <h5 class="mb-1">T° réf fixe</h5>
+                </div>
+                <div class="row" style="min-height: 1.5rem;">
+                    <div class="col-md-4">
+                        {{moteur.temperature_fixe | showUnity("°C") }}
+                    </div>
+                    <div class="col-md-2">
+                        diff {{(moteur.temperature_fixe - moteur.last_temperature) | showUnity("°C") }}
+                    </div>
+                </div>
+            {% elseif moteur.balise %}
                 <div class="d-flex w-100 justify-content-between">
                     <h5 class="mb-1">
                         {%if moteur.balise.is_balise_ok %}
@@ -69,8 +103,9 @@
                     <div class="col-md-2">
                         {{moteur.balise.last_temp | showUnity("°C") }}
                     </div>
-                    
+
                 </div>
+            {% endif %}
 
             </div>
         <div class="list-group-item flex-column align-items-start">

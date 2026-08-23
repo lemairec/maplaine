@@ -48,7 +48,16 @@
                     </div>
                 </div>
 
-                {%if moteur.balise %}
+                {%if moteur.type_temperature == 'fixe' %}
+                <div class="row" style="min-height: 1.5rem;">
+                    <div class="col-md-4">
+                        T° réf fixe {{moteur.temperature_fixe | showUnity("°C") }}
+                    </div>
+                    <div class="col-md-2">
+                        (diff {{(moteur.temperature_fixe - moteur.last_temperature) | showUnity("°C") }})
+                    </div>
+                </div>
+                {% elseif moteur.balise %}
                 <div class="row" style="min-height: 1.5rem;">
                     <div class="col-md-4">
                         {%if moteur.balise.is_balise_ok %}
@@ -70,7 +79,7 @@
                     <div class="col-md-2">
                         (diff {{(moteur.balise.last_temp - moteur.last_temperature) | showUnity("°C") }})
                     </div>
-                    
+
                 </div>
                 {% endif %}
 
