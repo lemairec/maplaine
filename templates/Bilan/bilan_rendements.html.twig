@@ -19,9 +19,9 @@
                 <th>Qualite</th>
                 <th>Rendement</th>
             </tr>
-            {% for key, value in cultures %}
+            {% for value in cultures2 %}
                 <tr>
-                    <th>{{key}}</th>
+                    <th>{{value["name"]}}</th>
                     <th></th>
                     <th></th>
                     <th>{{value["rendement_min"] | showUnity('t/ha')}}</th>

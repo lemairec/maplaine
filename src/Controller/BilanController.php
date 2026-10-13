@@ -519,7 +519,7 @@ class BilanController extends CommonController
         }
 
         usort($cultures2, function($a, $b) { // anonymous function
-            return strcmp($a["poid"],$b["poid"]);
+            return strcmp($a["name"],$b["name"]);
         });
 
         return $this->render('Bilan/bilan_rendements.html.twig', array(
