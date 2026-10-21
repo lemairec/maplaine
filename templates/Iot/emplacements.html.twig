@@ -1,0 +1,27 @@
+{% extends 'base_agri.html.twig' %}
+
+{% block body %}
+
+    <div class="card">
+        <div class="card-header">
+            Emplacements
+            <a class="float-right" href="{{ url("silo_emplacement", {'id': 0}) }}">Ajouter</a>
+        </div>
+        <div class="list-group">
+            {% for emplacement in emplacements %}
+            <div class="list-group-item flex-column align-items-start">
+                <div class="d-flex w-100 justify-content-between">
+                    <h5 class="mb-1">
+                        <a href="{{ url("silo_emplacement", {'id': emplacement.id}) }}">{{emplacement.name}}
+                        </a>
+                    </h5>
+                    <a href="{{ url("silo_emplacement_delete", {'id': emplacement.id}) }}" onclick="return confirm('Supprimer cet emplacement ?');">Supprimer</a>
+                </div>
+
+                {% include 'Iot/emplacement_detail.html.twig' %}
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+{% endblock %}

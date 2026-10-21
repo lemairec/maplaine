@@ -1,0 +1,70 @@
+{% if emplacement.balise_ext %}
+<div class="row" style="min-height: 1.5rem;">
+    <div class="col-md-4">
+        {%if emplacement.balise_ext.is_balise_ok %}
+            <button type="button" class="btn btn-success"></button>
+        {% else %}
+            <button type="button" class="btn btn-danger"></button>
+        {% endif %}
+        T° ext : <a href="{{ url("silo_balise", {'id': emplacement.balise_ext.id}) }}">{{emplacement.balise_ext.label ?: emplacement.balise_ext.name}}</a>
+    </div>
+    <div class="col-md-2">
+        {{emplacement.balise_ext.last_update | showDatetime }}
+    </div>
+    <div class="col-md-2">
+        {{emplacement.balise_ext.last_calculate | showUnity(emplacement.balise_ext.unity) }}
+    </div>
+</div>
+{% endif %}
+
+{% if emplacement.moteur %}
+<div class="row" style="min-height: 1.5rem;">
+    <div class="col-md-4">
+        {%if emplacement.moteur.is_ok %}
+            {%if emplacement.moteur.my_last_value %}
+                <button type="button" class="btn btn-success"></button>
+            {% else %}
+                <button type="button" class="btn btn-secondary"></button>
+            {% endif %}
+        {% else %}
+            <button type="button" class="btn btn-danger"></button>
+        {% endif %}
+        Moteur : <a href="{{ url("silo_moteur", {'id': emplacement.moteur.id}) }}">{{emplacement.moteur.label ?: emplacement.moteur.name}}</a>
+    </div>
+    <div class="col-md-2">
+        {{emplacement.moteur.last_update | showDatetime }}
+    </div>
+    <div class="col-md-2">
+        {{emplacement.moteur.my_last_value }}
+    </div>
+    <div class="col-md-2">
+        T° ext {{emplacement.moteur.last_temperature | showUnity("°C") }}
+    </div>
+</div>
+{% endif %}
+
+{% for balise in emplacement.balises %}
+<div class="row" style="min-height: 1.5rem;">
+    <div class="col-md-4">
+        {%if balise.is_balise_ok %}
+            <button type="button" class="btn btn-success"></button>
+        {% else %}
+            <button type="button" class="btn btn-danger"></button>
+        {% endif %}
+        <a href="{{ url("silo_balise", {'id': balise.id}) }}">{{balise.label ?: balise.name}}</a>
+    </div>
+    <div class="col-md-2">
+        {{balise.last_update | showDatetime }}
+    </div>
+    <div class="col-md-2">
+        {% if balise.isInRange(balise.last_calculate) %}
+            {{balise.last_calculate | showUnity(balise.unity) }}
+        {% endif %}
+    </div>
+    <div class="col-md-2">
+        {% if emplacement.balise_ext and balise.isInRange(balise.last_calculate) %}
+            (diff {{(balise.last_calculate - emplacement.balise_ext.last_calculate) | showUnity("°C") }})
+        {% endif %}
+    </div>
+</div>
+{% endfor %}

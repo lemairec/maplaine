@@ -1,0 +1,97 @@
+{% extends 'base_form.html.twig' %}
+
+{% block body_form %}
+
+    {% if emplacement.name %}
+    <div class="card">
+        <div class="list-group">
+            <div class="list-group-item flex-column align-items-start">
+                <div class="d-flex w-100 justify-content-between">
+                    <h5 class="mb-1">{{emplacement.name}}</h5>
+                </div>
+                {% include 'Iot/emplacement_detail.html.twig' %}
+            </div>
+            <div class="list-group-item flex-column align-items-start">
+                <div class="row" style="min-height: 1.5rem;">
+                    <div class="col-md-2">
+                    <a href="?duree=all">all
+                    </a>
+                    </div>
+                    <div class="col-md-2">
+                    <a href="?duree=6m">6m
+                    </a>
+                    </div>
+                    <div class="col-md-2">
+                    <a href="?duree=1m">1m
+                    </a>
+                    </div>
+                    <div class="col-md-2">
+                    <a href="?duree=1w">1w
+                    </a>
+                    </div>
+                    <div class="col-md-2">
+                    <a href="?duree=1d">1d
+                    </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <canvas id="myChart"></canvas>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.13.0/moment.min.js"></script>
+<script src='/lib/Chart.js/Chart.min.js'></script>
+<script>
+    var config = {
+        type: 'line',
+        data: {
+            datasets:[
+                {% for chartjs in chartjss %}
+                {
+                    label: '{{chartjs['annee'] | e('js')}}',
+                    fill: false,
+                    backgroundColor: '{{chartjs['color']}}',
+                    borderColor: '{{chartjs['color']}}',
+                    {% if loop.first and emplacement.balise_ext %}
+                    borderWidth: 3,
+                    {% endif %}
+
+                    data: [
+                        {% for data in chartjs['data'] %}
+                            {
+                                x: "{{data['date']}}",
+                                y: {{data['value']}}
+                            },
+                        {% endfor %}
+                    ],
+                },
+                {% endfor %}
+            ]
+        },
+        options: {
+            scales: {
+                xAxes: [{
+                    type: 'time',
+                    distribution: 'linear'
+                }]
+            },
+            elements: {
+                    point:{
+                        radius: 0
+                    }
+                }
+        }
+    };
+
+    window.onload = function() {
+        var ctx = document.getElementById('myChart').getContext('2d');
+        window.myLine = new Chart(ctx, config);
+
+    };
+</script>
+    {% endif %}
+
+{% endblock %}
