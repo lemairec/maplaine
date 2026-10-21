@@ -24,6 +24,7 @@ class EmplacementType extends AbstractType
 
         $builder
             ->add('name')
+            ->add('produit', null, ['required' => false])
             ->add('description')
             ->add('balises', EntityType::class, [
                 'class' => Balise::class,

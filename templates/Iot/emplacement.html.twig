@@ -7,7 +7,11 @@
         <div class="list-group">
             <div class="list-group-item flex-column align-items-start">
                 <div class="d-flex w-100 justify-content-between">
-                    <h5 class="mb-1">{{emplacement.name}}</h5>
+                    <h5 class="mb-1">{{emplacement.name}}
+                        {% if emplacement.produit %}
+                            <small class="text-muted">{{emplacement.produit}}</small>
+                        {% endif %}
+                    </h5>
                 </div>
                 {% include 'Iot/emplacement_detail.html.twig' %}
             </div>
