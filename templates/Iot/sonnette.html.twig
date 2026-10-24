@@ -1,0 +1,85 @@
+{% extends 'base_form.html.twig' %}
+
+{% block body_form %}
+
+    <div class="card">
+    <div class="list-group">
+        <div class="list-group-item flex-column align-items-start">
+            <div class="d-flex w-100 justify-content-between">
+                <h5 class="mb-1">
+                    {%if sonnette.is_ok %}
+                        <button type="button" class="btn btn-success"></button>
+                    {% else %}
+                        <button type="button" class="btn btn-danger"></button>
+                    {% endif %}
+                    {{sonnette.label}}
+                </h5>
+                {% if sonnette.last_update %}
+                    <a class="btn btn-primary" href="{{ url("silo_sonnette_ring", {'id': sonnette.id}) }}">Sonner</a>
+                {% endif %}
+            </div>
+
+            <div class="row" style="min-height: 1.5rem;">
+                <div class="col-md-4">
+                    {{sonnette.name}}
+                </div>
+                <div class="col-md-4">
+                    maj : {{sonnette.last_update | showDatetime }}
+                </div>
+                <div class="col-md-4">
+                    dernière : {{sonnette.last_ring | showDatetime }}
+                </div>
+            </div>
+        </div>
+        <div class="list-group-item flex-column align-items-start">
+            <div class="row" style="min-height: 1.5rem;">
+                <div class="col-md-2">
+                <a href="?duree=all">all
+                </a>
+                </div>
+                <div class="col-md-2">
+                <a href="?duree=6m">6m
+                </a>
+                </div>
+                <div class="col-md-2">
+                <a href="?duree=1m">1m
+                </a>
+                </div>
+                <div class="col-md-2">
+                <a href="?duree=1w">1w
+                </a>
+                </div>
+                <div class="col-md-2">
+                <a href="?duree=1d">1d
+                </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            Déclenchements ({{ sonnette_hists | length }})
+        </div>
+        <div class="list-group">
+            {% for sonnette_hist in sonnette_hists %}
+            <div class="list-group-item flex-column align-items-start">
+                <div class="row" style="min-height: 1.5rem;">
+                    <div class="col-md-4">
+                        {{sonnette_hist.datetime | showDatetime}}
+                    </div>
+                    <div class="col-md-4">
+                        {% if sonnette_hist.datetime_ring %}
+                            sonnée : {{sonnette_hist.datetime_ring | showDatetime}}
+                        {% else %}
+                            non sonnée
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+{% endblock %}

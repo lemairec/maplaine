@@ -1,0 +1,37 @@
+{% extends 'base_agri.html.twig' %}
+
+{% block body %}
+
+    <div class="card">
+        <div class="card-header">
+            Sonnettes
+        </div>
+        <div class="list-group">
+            {% for sonnette in sonnettes %}
+            <div class="list-group-item flex-column align-items-start">
+                <div class="row" style="min-height: 1.5rem;">
+                    <div class="col-md-4">
+                        {%if sonnette.is_ok %}
+                            <button type="button" class="btn btn-success"></button>
+                        {% else %}
+                            <button type="button" class="btn btn-danger"></button>
+                        {% endif %}
+                        <a href="{{ url("silo_sonnette", {'id': sonnette.id}) }}">{{sonnette.label ?: sonnette.name}}
+                        </a>
+                    </div>
+                    <div class="col-md-2">
+                        {{sonnette.name}}
+                    </div>
+                    <div class="col-md-3">
+                        maj : {{sonnette.last_update | showDatetime }}
+                    </div>
+                    <div class="col-md-3">
+                        dernière : {{sonnette.last_ring | showDatetime }}
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+{% endblock %}
