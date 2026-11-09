@@ -752,7 +752,7 @@ class DefaultController extends CommonController
         return new JsonResponse(['ok' => true, 'redirect' => $this->generateUrl('parcelles')]);
     }
 
-    #[Route(path: '/parcelle/create-map', name: 'parcelle_create_map', methods: ['POST'])]
+    #[Route(path: '/parcelle/create-map', name: 'parcelle_create_map', methods: ['POST'], priority: 10)]
     public function parcelleCreateMapAction(Request $request): JsonResponse
     {
         $this->check_user($request);
