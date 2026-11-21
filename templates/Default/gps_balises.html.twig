@@ -38,9 +38,35 @@
 
 {% block body %}
 
+{% for type, messages in app.flashes(['success', 'danger']) %}
+    {% for message in messages %}
+        <div class="alert alert-{{ type }}">{{ message }}</div>
+    {% endfor %}
+{% endfor %}
+
 <div class="card">
     <div id="map" style="position: relative;height: 600px;"></div>
 
+</div>
+
+<div class="card">
+    <div class="card-header">Importer un CSV</div>
+    <div class="card-body">
+        <form method="post" action="{{ path('gps_balises_import_csv') }}" enctype="multipart/form-data" class="form-inline">
+            <input type="hidden" name="_token" value="{{ csrf_token('gps_balises_import_csv') }}">
+            <input type="file" name="csv_file" accept=".csv,.txt,text/csv" required class="form-control mr-2">
+            <input type="text" name="prefix" placeholder="Préfixe du nom (défaut : nom du fichier)" class="form-control mr-2">
+            <select name="color" class="form-control mr-2">
+                <option value="red">red</option>
+                <option value="blue">blue</option>
+                <option value="green">green</option>
+                <option value="orange">orange</option>
+                <option value="black">black</option>
+            </select>
+            <button type="submit" class="btn btn-primary">Importer CSV</button>
+        </form>
+        <small class="text-muted">Colonnes détectées par l'en-tête (num/nom, lat, lng/lon), séparateur ; , ou tabulation. Sans en-tête : nom, lat, lon.</small>
+    </div>
 </div>
 
 <div class="card">

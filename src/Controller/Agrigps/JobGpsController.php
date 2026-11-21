@@ -271,6 +271,88 @@ class JobGpsController extends CommonController
         ));
     }
 
+    #[Route(path: '/gps_balises_import_csv', name: 'gps_balises_import_csv', methods: ['POST'])]
+    public function baliseImportCsvAction(Request $request)
+    {
+        $em = $this->getDoctrine()->getManager();
+
+        if (!$this->isCsrfTokenValid('gps_balises_import_csv', $request->request->get('_token'))) {
+            $this->addFlash('danger', 'Jeton CSRF invalide');
+            return $this->redirectToRoute('gps_balises');
+        }
+
+        $company_id = $this->getCurrentCompanyId($request);
+        $company = $em->getRepository(Company::class)->find($company_id);
+
+        $file = $request->files->get('csv_file');
+        if ($file == NULL || !$file->isValid()) {
+            $this->addFlash('danger', 'Aucun fichier CSV valide');
+            return $this->redirectToRoute('gps_balises');
+        }
+
+        $prefix = trim($request->request->get('prefix', ''));
+        if ($prefix == '') {
+            $prefix = pathinfo($file->getClientOriginalName(), PATHINFO_FILENAME);
+        }
+        $color = $request->request->get('color', 'red') ?: 'red';
+
+        $content = file_get_contents($file->getPathname());
+        $content = preg_replace('/^\xEF\xBB\xBF/', '', $content); // BOM
+        $lines = preg_split('/\r\n|\r|\n/', $content);
+
+        // séparateur : ; , ou tabulation
+        $first = '';
+        foreach ($lines as $l) { if (trim($l) != '') { $first = $l; break; } }
+        $sep = ',';
+        if (substr_count($first, ';') > 0) { $sep = ';'; }
+        elseif (substr_count($first, "\t") > 0) { $sep = "\t"; }
+
+        // colonnes par défaut : nom, lat, lon
+        $i_name = 0; $i_lat = 1; $i_lon = 2;
+        $header = array_map(fn($h) => strtolower(trim($h)), str_getcsv($first, $sep));
+        $has_header = false;
+        foreach ($header as $i => $h) {
+            if (in_array($h, ['lat', 'latitude'])) { $i_lat = $i; $has_header = true; }
+            elseif (in_array($h, ['lng', 'lon', 'long', 'longitude'])) { $i_lon = $i; $has_header = true; }
+            elseif (in_array($h, ['num', 'name', 'nom', 'id'])) { $i_name = $i; $has_header = true; }
+        }
+
+        $created = 0; $updated = 0; $errors = 0; $header_skipped = false;
+        foreach ($lines as $line) {
+            if (trim($line) == '') { continue; }
+            if ($has_header && !$header_skipped) { $header_skipped = true; continue; }
+
+            $rows = str_getcsv($line, $sep);
+            $lat_s = str_replace(',', '.', trim($rows[$i_lat] ?? ''));
+            $lon_s = str_replace(',', '.', trim($rows[$i_lon] ?? ''));
+            if (!is_numeric($lat_s) || !is_numeric($lon_s)) { $errors++; continue; }
+            $lat = (float)$lat_s;
+            $lon = (float)$lon_s;
+            $name = trim($rows[$i_name] ?? '');
+            if ($prefix != '') { $name = $prefix.' '.$name; }
+
+            $balise = $em->getRepository(Balise::class)->findOneByLatLon($lat, $lon);
+            if ($balise == NULL) {
+                $balise = new Balise();
+                $balise->my_datetime = new DateTime();
+                $balise->company = $company;
+                $balise->latitude = $lat;
+                $balise->longitude = $lon;
+                $balise->myId = strval($lat)."_".strval($lon);
+                $balise->color = $color;
+                $created++;
+            } else {
+                $updated++;
+            }
+            $balise->name = $name;
+            $em->persist($balise);
+            $em->flush();
+        }
+
+        $this->addFlash('success', "Import CSV : $created balise(s) créée(s), $updated mise(s) à jour, $errors ligne(s) ignorée(s)");
+        return $this->redirectToRoute('gps_balises');
+    }
+
     #[Route(path: '/gps_balises_export', name: 'gps_balises_export')]
     public function baliseExportAction(Request $request)
     {
