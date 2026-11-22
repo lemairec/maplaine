@@ -13,15 +13,34 @@
         }
     console.log("otot");
     window.addEventListener( "load", function( event ) {
-        var map = L.map( 'map' /* the id of the tag used for map injection */ );
+        var map = L.map( 'map', { maxZoom: 22 } );
 
         var measureControl = L.control.measure({ primaryLengthUnit: 'meters', secondaryLengthUnit: 'kilometers', primaryAreaUnit: 'hectares' });
         measureControl.addTo(map);
 
         map.setView( [{{lat}},  {{lon}} /*longitude*/], 18 /*zoom*/ );
 
-        // --- We add a layer based on OpenStreetMap ---
-        L.tileLayer( 'http://tile.openstreetmap.org/{z}/{x}/{y}.png' ).addTo(map);   // Base Map
+        var osmLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap', maxNativeZoom: 19, maxZoom: 22 });
+        var satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: '© Esri', maxNativeZoom: 19, maxZoom: 22 });
+
+        var baseLayer = 'sat';
+        try { baseLayer = localStorage.getItem('gps_balises_layer') || 'sat'; } catch (e) {}
+        (baseLayer == 'osm' ? osmLayer : satLayer).addTo(map);
+
+        var cadastreLayer = L.tileLayer('https://data.geopf.fr/wmts?SERVICE=WMTS&REQUEST=GetTile&VERSION=1.0.0&LAYER=CADASTRALPARCELS.PARCELLAIRE_EXPRESS&STYLE=PCI%20vecteur&TILEMATRIXSET=PM&FORMAT=image/png&TILEMATRIX={z}&TILEROW={y}&TILECOL={x}', { attribution: '© IGN', minZoom: 0, maxNativeZoom: 19, maxZoom: 22 });
+        var showCadastre = true;
+        try { showCadastre = localStorage.getItem('gps_balises_cadastre') !== '0'; } catch (e) {}
+        if (showCadastre) { cadastreLayer.addTo(map); }
+
+        L.control.layers({ 'Satellite': satLayer, 'Plan': osmLayer }, { 'Cadastre': cadastreLayer }).addTo(map);
+        map.on('baselayerchange', function (e) {
+            try { localStorage.setItem('gps_balises_layer', e.layer === osmLayer ? 'osm' : 'sat'); } catch (err) {}
+        });
+        map.on('overlayadd overlayremove', function (e) {
+            if (e.layer === cadastreLayer) {
+                try { localStorage.setItem('gps_balises_cadastre', e.type == 'overlayadd' ? '1' : '0'); } catch (err) {}
+            }
+        });
 
         {% for point in balises %}
             var marker = new L.circle([{{point.latitude}},{{point.longitude}}], {
