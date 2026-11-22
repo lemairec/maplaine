@@ -70,6 +70,18 @@
 </div>
 
 <div class="card">
+    <div class="card-header">Supprimer des balises par préfixe de nom</div>
+    <div class="card-body">
+        <form method="post" action="{{ path('gps_balises_delete_prefix') }}" class="form-inline"
+              onsubmit="return confirm('Supprimer toutes les balises dont le nom commence par « ' + this.prefix.value + ' » ?');">
+            <input type="hidden" name="_token" value="{{ csrf_token('gps_balises_delete_prefix') }}">
+            <input type="text" name="prefix" placeholder="ex : CAD_" required class="form-control mr-2">
+            <button type="submit" class="btn btn-danger">Supprimer</button>
+        </form>
+    </div>
+</div>
+
+<div class="card">
     <div class="card-header">
         Balises
         <button type="button" class="btn btn-primary" onclick="window.location.href='/gps_import'">Importer</button>

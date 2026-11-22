@@ -33,6 +33,20 @@ class BaliseRepository extends ServiceEntityRepository
     }
     
 
+    public function deleteByCompanyAndNamePrefix($company, string $prefix): int
+    {
+        $like = addcslashes($prefix, '%_\\').'%';
+        return $this->createQueryBuilder('b')
+            ->delete()
+            ->andWhere('b.company = :company')
+            ->andWhere('b.name LIKE :prefix')
+            ->setParameter('company', $company)
+            ->setParameter('prefix', $like)
+            ->getQuery()
+            ->execute()
+        ;
+    }
+
     public function getOneByMyId($my_id): ?Balise
     {
         return $this->createQueryBuilder('b')

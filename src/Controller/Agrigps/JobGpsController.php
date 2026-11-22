@@ -353,6 +353,30 @@ class JobGpsController extends CommonController
         return $this->redirectToRoute('gps_balises');
     }
 
+    #[Route(path: '/gps_balises_delete_prefix', name: 'gps_balises_delete_prefix', methods: ['POST'])]
+    public function baliseDeletePrefixAction(Request $request)
+    {
+        $em = $this->getDoctrine()->getManager();
+
+        if (!$this->isCsrfTokenValid('gps_balises_delete_prefix', $request->request->get('_token'))) {
+            $this->addFlash('danger', 'Jeton CSRF invalide');
+            return $this->redirectToRoute('gps_balises');
+        }
+
+        $prefix = trim($request->request->get('prefix', ''));
+        if ($prefix == '') {
+            $this->addFlash('danger', 'Préfixe vide : rien supprimé');
+            return $this->redirectToRoute('gps_balises');
+        }
+
+        $company_id = $this->getCurrentCompanyId($request);
+        $company = $em->getRepository(Company::class)->find($company_id);
+
+        $n = $em->getRepository(Balise::class)->deleteByCompanyAndNamePrefix($company, $prefix);
+        $this->addFlash('success', "$n balise(s) commençant par \"$prefix\" supprimée(s)");
+        return $this->redirectToRoute('gps_balises');
+    }
+
     #[Route(path: '/gps_balises_export', name: 'gps_balises_export')]
     public function baliseExportAction(Request $request)
     {
