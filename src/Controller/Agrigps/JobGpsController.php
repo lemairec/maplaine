@@ -353,6 +353,50 @@ class JobGpsController extends CommonController
         return $this->redirectToRoute('gps_balises');
     }
 
+    #[Route(path: '/gps_balises_add_point', name: 'gps_balises_add_point', methods: ['POST'])]
+    public function baliseAddPointAction(Request $request)
+    {
+        $em = $this->getDoctrine()->getManager();
+
+        if (!$this->isCsrfTokenValid('gps_balises_add_point', $request->request->get('_token'))) {
+            return new JsonResponse(['error' => 'Jeton CSRF invalide'], 403);
+        }
+
+        $lat_s = $request->request->get('lat');
+        $lon_s = $request->request->get('lon');
+        if (!is_numeric($lat_s) || !is_numeric($lon_s)) {
+            return new JsonResponse(['error' => 'Coordonnées invalides'], 400);
+        }
+        $lat = round((float)$lat_s, 8);
+        $lon = round((float)$lon_s, 8);
+
+        if ($em->getRepository(Balise::class)->findOneByLatLon($lat, $lon) != NULL) {
+            return new JsonResponse(['error' => 'Une balise existe déjà à cet endroit'], 409);
+        }
+
+        $company_id = $this->getCurrentCompanyId($request);
+        $company = $em->getRepository(Company::class)->find($company_id);
+
+        $balise = new Balise();
+        $balise->my_datetime = new DateTime();
+        $balise->company = $company;
+        $balise->latitude = $lat;
+        $balise->longitude = $lon;
+        $balise->myId = strval($lat)."_".strval($lon);
+        $balise->name = trim($request->request->get('name', ''));
+        $balise->color = $request->request->get('color', 'red') ?: 'red';
+        $em->persist($balise);
+        $em->flush();
+
+        return new JsonResponse([
+            'id' => $balise->id,
+            'name' => $balise->name,
+            'lat' => $balise->latitude,
+            'lon' => $balise->longitude,
+            'color' => $balise->color,
+        ]);
+    }
+
     #[Route(path: '/gps_balises_delete_prefix', name: 'gps_balises_delete_prefix', methods: ['POST'])]
     public function baliseDeletePrefixAction(Request $request)
     {

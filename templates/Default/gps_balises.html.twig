@@ -5,7 +5,13 @@
 
     <!-- On charge le code JavaScript de la librairie leaflet -->
     <script src="https://unpkg.com/leaflet@1.3.4/dist/leaflet.js"></script>
-    <script src="/js/leaflet-measure.js"></script>
+    <style>
+        .measure-ctrl { background: #fff; padding: 6px 8px; border-radius: 4px; box-shadow: 0 1px 5px rgba(0,0,0,.4); font: 13px/1.4 sans-serif; min-width: 150px; }
+        .measure-ctrl button { font-size: 12px; padding: 2px 6px; margin: 2px 2px 0 0; cursor: pointer; }
+        .measure-ctrl .measure-result { margin-top: 4px; }
+        .measure-ctrl .measure-hint { color: #666; font-size: 11px; }
+        .leaflet-container.measuring { cursor: crosshair; }
+    </style>
 
   <script>
         function onMapClick(e) {
@@ -15,8 +21,6 @@
     window.addEventListener( "load", function( event ) {
         var map = L.map( 'map', { maxZoom: 22 } );
 
-        var measureControl = L.control.measure({ primaryLengthUnit: 'meters', secondaryLengthUnit: 'kilometers', primaryAreaUnit: 'hectares' });
-        measureControl.addTo(map);
 
         map.setView( [{{lat}},  {{lon}} /*longitude*/], 18 /*zoom*/ );
 
@@ -49,6 +53,177 @@
         {% endfor %}
 
         map.on('click', onMapClick);
+
+        // --- Outil de mesure (distance + surface) ---
+        var measuring = false, pts = [];
+        var mLayer = L.layerGroup().addTo(map);
+        var mLine = null, mPoly = null;
+
+        function geodesicArea(latlngs) {
+            var R = 6378137, d2r = Math.PI / 180, area = 0, n = latlngs.length;
+            for (var i = 0; i < n; i++) {
+                var p1 = latlngs[i], p2 = latlngs[(i + 1) % n];
+                area += (p2.lng - p1.lng) * d2r * (2 + Math.sin(p1.lat * d2r) + Math.sin(p2.lat * d2r));
+            }
+            return Math.abs(area * R * R / 2);
+        }
+        function fmtDist(m) { return m < 1000 ? m.toFixed(2) + ' m' : (m / 1000).toFixed(3) + ' km'; }
+        function fmtArea(a) { return a.toFixed(0) + ' m² (' + (a / 10000).toFixed(4) + ' ha)'; }
+
+        var MeasureControl = L.Control.extend({
+            options: { position: 'topright' },
+            onAdd: function () {
+                var div = L.DomUtil.create('div', 'measure-ctrl leaflet-bar');
+                div.innerHTML =
+                    '<button type="button" data-act="start">📏 Mesurer</button>' +
+                    '<button type="button" data-act="stop" style="display:none">Terminer</button>' +
+                    '<button type="button" data-act="clear" style="display:none">Effacer</button>' +
+                    '<div class="measure-result"></div>';
+                L.DomEvent.disableClickPropagation(div);
+                L.DomEvent.disableScrollPropagation(div);
+                div.addEventListener('click', function (e) {
+                    var act = e.target.getAttribute('data-act');
+                    if (act == 'start') { clearMeasure(); startMeasure(); }
+                    else if (act == 'stop') { stopMeasure(); }
+                    else if (act == 'clear') { clearMeasure(); stopMeasure(); }
+                });
+                this._div = div;
+                return div;
+            }
+        });
+        var measureCtrl = new MeasureControl().addTo(map);
+        var mDiv = measureCtrl._div;
+        function btn(act) { return mDiv.querySelector('[data-act="' + act + '"]'); }
+
+        function render() {
+            var res = mDiv.querySelector('.measure-result');
+            var dist = 0;
+            for (var i = 1; i < pts.length; i++) { dist += pts[i - 1].distanceTo(pts[i]); }
+            var html = '';
+            if (pts.length >= 2) { html += 'Distance : <b>' + fmtDist(dist) + '</b>'; }
+            if (pts.length >= 3) {
+                var perim = dist + pts[pts.length - 1].distanceTo(pts[0]);
+                html += '<br>Périmètre : ' + fmtDist(perim) + '<br>Surface : <b>' + fmtArea(geodesicArea(pts)) + '</b>';
+            }
+            if (measuring) { html += '<div class="measure-hint">Clic : ajouter un point<br>Double-clic : terminer</div>'; }
+            res.innerHTML = html;
+            btn('clear').style.display = pts.length ? '' : 'none';
+        }
+        function redraw() {
+            if (mLine) { mLayer.removeLayer(mLine); mLine = null; }
+            if (mPoly) { mLayer.removeLayer(mPoly); mPoly = null; }
+            if (pts.length >= 3) { mPoly = L.polygon(pts, { color: '#ffcc00', weight: 1, fillOpacity: 0.15, dashArray: '4 4', interactive: false }).addTo(mLayer); }
+            if (pts.length >= 2) { mLine = L.polyline(pts, { color: '#ffcc00', weight: 3, interactive: false }).addTo(mLayer); }
+            render();
+        }
+        function onMeasureClick(e) {
+            if (pts.length && pts[pts.length - 1].equals(e.latlng)) { return; } // double-clic
+            pts.push(e.latlng);
+            L.circleMarker(e.latlng, { radius: 4, color: '#ffcc00', fillColor: '#fff', fillOpacity: 1, weight: 2, interactive: false }).addTo(mLayer);
+            redraw();
+        }
+        function startMeasure() {
+            stopAdd();
+            measuring = true;
+            map.doubleClickZoom.disable();
+            map.on('click', onMeasureClick);
+            map.on('dblclick', stopMeasure);
+            L.DomUtil.addClass(map.getContainer(), 'measuring');
+            btn('start').style.display = 'none';
+            btn('stop').style.display = '';
+            render();
+        }
+        function stopMeasure() {
+            if (!measuring) { return; }
+            measuring = false;
+            map.off('click', onMeasureClick);
+            map.off('dblclick', stopMeasure);
+            setTimeout(function () { map.doubleClickZoom.enable(); }, 0);
+            L.DomUtil.removeClass(map.getContainer(), 'measuring');
+            btn('start').style.display = '';
+            btn('stop').style.display = 'none';
+            render();
+        }
+        function clearMeasure() { pts = []; mLayer.clearLayers(); mLine = mPoly = null; render(); }
+
+        // --- Ajout de balises par clic ---
+        var adding = false, addNum = 1;
+        var AddControl = L.Control.extend({
+            options: { position: 'topright' },
+            onAdd: function () {
+                var div = L.DomUtil.create('div', 'measure-ctrl leaflet-bar');
+                div.innerHTML =
+                    '<button type="button" data-act="add-start">➕ Ajouter des balises</button>' +
+                    '<button type="button" data-act="add-stop" style="display:none">Terminer</button>' +
+                    '<div class="add-form" style="display:none; margin-top:4px">' +
+                        'Nom <input type="text" class="add-prefix" value="P" size="6"> ' +
+                        'n° <input type="number" class="add-num" value="1" min="0" style="width:55px"><br>' +
+                        'Couleur <select class="add-color">' +
+                            '<option>red</option><option>blue</option><option>green</option><option>orange</option><option>black</option><option>yellow</option>' +
+                        '</select>' +
+                        '<div class="measure-hint">Clic sur la carte : ajouter une balise</div>' +
+                        '<div class="add-msg measure-hint"></div>' +
+                    '</div>';
+                L.DomEvent.disableClickPropagation(div);
+                L.DomEvent.disableScrollPropagation(div);
+                div.addEventListener('click', function (e) {
+                    var act = e.target.getAttribute('data-act');
+                    if (act == 'add-start') { startAdd(); }
+                    else if (act == 'add-stop') { stopAdd(); }
+                });
+                this._div = div;
+                return div;
+            }
+        });
+        var aDiv = new AddControl().addTo(map)._div;
+        function aq(sel) { return aDiv.querySelector(sel); }
+
+        function escapeHtml(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+
+        function onAddClick(e) {
+            var num = parseInt(aq('.add-num').value, 10);
+            if (isNaN(num)) { num = 1; }
+            var name = aq('.add-prefix').value.trim() + num;
+            var color = aq('.add-color').value;
+            var body = new URLSearchParams();
+            body.append('_token', '{{ csrf_token('gps_balises_add_point') }}');
+            body.append('lat', e.latlng.lat.toFixed(8));
+            body.append('lon', e.latlng.lng.toFixed(8));
+            body.append('name', name);
+            body.append('color', color);
+            var tmp = L.circleMarker(e.latlng, { radius: 5, color: color, dashArray: '2 2' }).addTo(map);
+            fetch('{{ path('gps_balises_add_point') }}', { method: 'POST', body: body, credentials: 'same-origin' })
+                .then(function (r) { return r.json().then(function (j) { return { ok: r.ok, j: j }; }); })
+                .then(function (res) {
+                    map.removeLayer(tmp);
+                    if (!res.ok) { aq('.add-msg').textContent = '⚠ ' + (res.j.error || 'Erreur'); return; }
+                    var b = res.j;
+                    L.circle([b.lat, b.lon], { color: b.color, radius: 1 }).addTo(map)
+                        .bindPopup(escapeHtml(b.name) + '<br><a href="/gps_balise/' + b.id + '">modifier</a>');
+                    aq('.add-num').value = num + 1;
+                    aq('.add-msg').textContent = '✔ ' + b.name + ' ajoutée';
+                })
+                .catch(function () { map.removeLayer(tmp); aq('.add-msg').textContent = '⚠ Erreur réseau'; });
+        }
+        function startAdd() {
+            stopMeasure();
+            adding = true;
+            map.on('click', onAddClick);
+            L.DomUtil.addClass(map.getContainer(), 'measuring');
+            aq('[data-act="add-start"]').style.display = 'none';
+            aq('[data-act="add-stop"]').style.display = '';
+            aq('.add-form').style.display = '';
+        }
+        function stopAdd() {
+            if (!adding) { return; }
+            adding = false;
+            map.off('click', onAddClick);
+            L.DomUtil.removeClass(map.getContainer(), 'measuring');
+            aq('[data-act="add-start"]').style.display = '';
+            aq('[data-act="add-stop"]').style.display = 'none';
+            aq('.add-form').style.display = 'none';
+            aq('.add-msg').textContent = '';
+        }
 
     });
 
