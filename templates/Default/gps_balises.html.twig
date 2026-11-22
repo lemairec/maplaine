@@ -22,7 +22,16 @@
         var map = L.map( 'map', { maxZoom: 22 } );
 
 
-        map.setView( [{{lat}},  {{lon}} /*longitude*/], 18 /*zoom*/ );
+        // Centrage : sur les balises proches de la médiane (ignore les points aberrants), sinon la France
+        var allPts = [{% for point in balises %}[{{ point.latitude }}, {{ point.longitude }}]{{ loop.last ? '' : ',' }}{% endfor %}];
+        (function () {
+            if (!allPts.length) { map.setView([46.6, 2.5], 6); return; }
+            function median(a) { a = a.slice().sort(function (x, y) { return x - y; }); return a[Math.floor(a.length / 2)]; }
+            var mid = L.latLng(median(allPts.map(function (p) { return p[0]; })), median(allPts.map(function (p) { return p[1]; })));
+            var near = allPts.filter(function (p) { return mid.distanceTo(p) < 50000; });
+            if (near.length < 2) { map.setView(mid, 18); return; }
+            map.fitBounds(L.latLngBounds(near), { padding: [20, 20], maxZoom: 18 });
+        })();
 
         var osmLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap', maxNativeZoom: 19, maxZoom: 22 });
         var satLayer = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: '© Esri', maxNativeZoom: 19, maxZoom: 22 });
