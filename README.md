@@ -54,11 +54,9 @@ brew link --overwrite php@8.1
 Back_up
 -------
 
-ssh maplainemk@ssh.cluster023.hosting.ovh.net
-cd maplaine; sh ~/maplaine/export.sh;
-exit
+sh ~/workspace/maplaine/backup.sh
 
-sh ~/workspace/maplaine/import.sh
+(équivaut à : `ssh maplainemk@ssh.cluster023.hosting.ovh.net 'cd ~/maplaine && sh ~/maplaine/export.sh' && sh ~/workspace/maplaine/import.sh`)
 
 
 Mairadb
