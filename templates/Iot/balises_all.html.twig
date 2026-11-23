@@ -1,0 +1,97 @@
+{% extends 'base_agri.html.twig' %}
+
+{% block body %}
+
+    <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Toutes les balises</span>
+            <span>
+                {% for d in ['1d', '1w', '1m', '6m', 'all'] %}
+                    <a href="?duree={{ d }}" class="btn btn-sm {{ d == duree ? 'btn-primary' : 'btn-outline-primary' }}">{{ d }}</a>
+                {% endfor %}
+                <a href="{{ url('silo_balises') }}" class="btn btn-sm btn-outline-secondary">Liste</a>
+            </span>
+        </div>
+        <canvas id="myChart"></canvas>
+    </div>
+
+    <div class="card">
+        <div class="list-group">
+            {% for item in items %}
+                {% set balise = item.balise %}
+                <div class="list-group-item">
+                    <div class="row">
+                        <div class="col-md-6">
+                            {% if balise.is_balise_ok %}
+                                <button type="button" class="btn btn-success btn-sm"></button>
+                            {% else %}
+                                <button type="button" class="btn btn-danger btn-sm"></button>
+                            {% endif %}
+                            <span class="legend-dot" data-index="{{ loop.index0 }}" style="display:inline-block;width:12px;height:12px;border-radius:50%;"></span>
+                            <a href="{{ url('silo_balise', {'id': balise.id}) }}">{{ balise.label }}</a>
+                        </div>
+                        <div class="col-md-3">
+                            {{ balise.last_update | showDatetime }}
+                        </div>
+                        <div class="col-md-3">
+                            {% if balise.isInRange(balise.last_calculate) %}
+                                {{ balise.last_calculate | showUnity(balise.unity) }}
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="list-group-item">Aucune balise nommée.</div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.13.0/moment.min.js"></script>
+    <script src='/lib/Chart.js/Chart.min.js'></script>
+    <script>
+        var palette = ['#3e95cd', '#e8743b', '#19a979', '#ed4a7b', '#945ecf', '#13a4b4',
+                       '#525df4', '#bf399e', '#6c8893', '#ee6868', '#2f6497', '#d4a017'];
+
+        var series = [
+            {% for item in items %}
+            {
+                label: {{ (item.balise.label ~ (item.balise.unity ? ' (' ~ item.balise.unity ~ ')' : '')) | json_encode | raw }},
+                data: {{ item.data | json_encode | raw }}
+            },
+            {% endfor %}
+        ];
+
+        var datasets = series.map(function(s, i) {
+            var color = palette[i % palette.length];
+            return {
+                label: s.label,
+                fill: false,
+                borderColor: color,
+                backgroundColor: color,
+                borderWidth: 2,
+                data: s.data
+            };
+        });
+
+        document.querySelectorAll('.legend-dot').forEach(function(el) {
+            el.style.backgroundColor = palette[parseInt(el.dataset.index) % palette.length];
+        });
+
+        window.onload = function() {
+            var ctx = document.getElementById('myChart').getContext('2d');
+            window.myLine = new Chart(ctx, {
+                type: 'line',
+                data: { datasets: datasets },
+                options: {
+                    legend: { display: true, position: 'bottom' },
+                    tooltips: { mode: 'nearest', intersect: false },
+                    scales: {
+                        xAxes: [{ type: 'time', distribution: 'linear' }]
+                    },
+                    elements: { point: { radius: 0 } }
+                }
+            });
+        };
+    </script>
+
+{% endblock %}

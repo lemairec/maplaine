@@ -118,6 +118,48 @@ class SiloController extends CommonController
         ));
     }
 
+    #[Route(path: '/silo/balises/all', name: 'silo_balises_all')]
+    public function siloBalisesAll(Request $request)
+    {
+        $em = $this->getDoctrine()->getManager();
+        $duree = $request->query->get('duree', '1w');
+
+        $this->check_user($request);
+        $balises = $em->getRepository(Balise::class)->getAllForCompany($this->company);
+
+        $items = [];
+        foreach($balises as $balise){
+            if(!$balise->label){
+                continue;
+            }
+            // 0 = pas de scale (cf. calculFor)
+            if($balise->scale !== null && $balise->scale != 0 && $balise->scale != 1){
+                continue;
+            }
+            $balise->calculateBalise();
+            $rows = $em->getRepository(Temperature::class)->getRawForBalise($balise, $duree);
+            // max ~500 points par courbe
+            $step = max(1, (int) ceil(count($rows) / 500));
+            $data = [];
+            foreach($rows as $i => $row){
+                if($i % $step != 0){
+                    continue;
+                }
+                $value = $balise->calculFor($row['temp']);
+                if($balise->isInRange($value)){
+                    $data[] = ['x' => $row['datetime']->format("Y-m-d H:i:s"), 'y' => $value];
+                }
+            }
+            unset($rows);
+            $items[] = ['balise' => $balise, 'data' => $data];
+        }
+
+        return $this->render('Iot/balises_all.html.twig', array(
+            'items' => $items,
+            'duree' => $duree
+        ));
+    }
+
     #[Route(path: '/silo/balise/{id}', name: 'silo_balise')]
     public function siloBalise($id, Request $request)
     {

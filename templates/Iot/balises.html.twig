@@ -4,8 +4,9 @@
 
 
     <div class="card">
-        <div class="card-header">
-            Balises
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>Balises</span>
+            <a href="{{ url("silo_balises_all") }}" class="btn btn-sm btn-primary">Voir toutes les courbes</a>
         </div>
         <div class="list-group">
             {% for balise in balises_names %}
