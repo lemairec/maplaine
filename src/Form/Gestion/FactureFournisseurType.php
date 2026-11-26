@@ -11,6 +11,7 @@ use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\Extension\Core\Type\FileType;
 use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Vich\UploaderBundle\Form\Type\VichFileType;
+use Symfony\Component\Form\Extension\Core\Type\CollectionType;
 
 use App\Entity\Campagne;
 use App\Entity\Gestion\Compte;
@@ -59,6 +60,14 @@ class FactureFournisseurType extends AbstractType
             'class'        => Compte::class,
             'choice_label' => 'name',
             'choices' => $options['comptes'],
+        ));
+        $builder->add('lignes', CollectionType::class, array(
+            'entry_type' => FactureFournisseurLigneType::class,
+            'entry_options' => array('label' => false),
+            'allow_add' => true,
+            'allow_delete' => true,
+            'by_reference' => false,
+            'label' => false,
         ));
         $builder->add('factureFile', VichFileType::class, array(
             'required' => false,

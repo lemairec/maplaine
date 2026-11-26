@@ -104,12 +104,16 @@ class CommercialisationController extends CommonController
         $factures = $em->getRepository(FactureFournisseur::class)->getAllForCompteCampagne($compte, $campagne);
         $value = 0;
         foreach($factures as $f){
-            $str = $f->tag;
-            if(!array_key_exists($str, $ecritures_by_campagne_by_tag)){
-                $ecritures_by_campagne_by_tag[$str] = [ "value" => $str, "sum" => 0, "facture" => []];
+            foreach($f->getMontantsParTag() as $l){
+                $str = $l["tag"];
+                if(!array_key_exists($str, $ecritures_by_campagne_by_tag)){
+                    $ecritures_by_campagne_by_tag[$str] = [ "value" => $str, "sum" => 0, "facture" => []];
+                }
+                if(!in_array($f, $ecritures_by_campagne_by_tag[$str]["facture"], true)){
+                    $ecritures_by_campagne_by_tag[$str]["facture"][] = $f;
+                }
+                $ecritures_by_campagne_by_tag[$str]["sum"] += -$l["montantHT"];
             }
-            $ecritures_by_campagne_by_tag[$str]["facture"][] = $f;
-            $ecritures_by_campagne_by_tag[$str]["sum"] += -$f->montantHT;
         }
         dump($ecritures_by_campagne_by_tag);
        

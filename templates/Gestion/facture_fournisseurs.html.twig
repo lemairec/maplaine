@@ -38,7 +38,13 @@
                 <td>{% if(facture.factureFileName) %}<span class="oi oi-paperclip"></span>{% endif %}</td>
                 <td>{{ facture.date | showIsoDate | my_path('facture_fournisseur', {'facture_id': facture.id}) | raw }}</td>
                 <td>{{ facture.getCampagneStr() }}</td>
-                <td>{{ facture.getCompleteName() }}</td>
+                <td>
+                    {{ facture.name }}
+                    {% set montants = facture.getMontantsParTag() %}
+                    {% for l in montants %}
+                        <span class="badge badge-secondary">{{ l.tag ?: '-' }}{% if montants|length > 1 %} : {{ l.montantHT|showEur }}{% endif %}</span>
+                    {% endfor %}
+                </td>
                 <td>{{ facture.banque.shortName }}</td>
                 <td>{{ facture.compte.shortName }}</td>
                 <td class="text-right">{{ facture.montantHT|showEur }}</td>

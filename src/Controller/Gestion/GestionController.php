@@ -569,12 +569,16 @@ class GestionController extends CommonController
                 if($f->campagne){
                     $campagne = $f->campagne->name;
                 }
-                $str = $campagne." - ".$f->tag;
-                if(!array_key_exists($str, $ecritures_by_campagne_by_tag)){
-                    $ecritures_by_campagne_by_tag[$str] = [ "value" => $str, "sum" => 0, "facture" => []];
+                foreach($f->getMontantsParTag() as $l){
+                    $str = $campagne." - ".$l["tag"];
+                    if(!array_key_exists($str, $ecritures_by_campagne_by_tag)){
+                        $ecritures_by_campagne_by_tag[$str] = [ "value" => $str, "sum" => 0, "facture" => []];
+                    }
+                    if(!in_array($f, $ecritures_by_campagne_by_tag[$str]["facture"], true)){
+                        $ecritures_by_campagne_by_tag[$str]["facture"][] = $f;
+                    }
+                    $ecritures_by_campagne_by_tag[$str]["sum"] += $l["montantHT"];
                 }
-                $ecritures_by_campagne_by_tag[$str]["facture"][] = $f;
-                $ecritures_by_campagne_by_tag[$str]["sum"] += $f->montantHT;
 
             }
         }
@@ -608,9 +612,11 @@ class GestionController extends CommonController
             $value = 0;
 
             foreach($factures as $f){
-                $tag = $f->tag;
-                if(!in_array($tag, $tags)){
-                    $tags[] = $tag;
+                foreach($f->getMontantsParTag() as $l){
+                    $tag = $l["tag"];
+                    if(!in_array($tag, $tags)){
+                        $tags[] = $tag;
+                    }
                 }
             }
 
@@ -620,19 +626,23 @@ class GestionController extends CommonController
                 if($f->campagne){
                     $campagne = $f->campagne->name;
                 }
-                $str = $campagne." - ".$f->tag;
-                if(!array_key_exists($str, $ecritures_by_campagne_by_tag)){
-                    $ecritures_by_campagne_by_tag[$str] = [ "value" => $str, "sum" => 0, "facture" => []];
-                }
-                $ecritures_by_campagne_by_tag[$str]["facture"][] = $f;
-                $ecritures_by_campagne_by_tag[$str]["sum"] += $f->montantHT;
-                if(!array_key_exists($campagne, $ecritures_by_campagne)){
-                    $ecritures_by_campagne[$campagne] = [ "campagne" => $campagne, "tags" => []];
-                    foreach($tags as $t){
-                        $ecritures_by_campagne[$campagne]["tags"][$t] = 0;
+                foreach($f->getMontantsParTag() as $l){
+                    $str = $campagne." - ".$l["tag"];
+                    if(!array_key_exists($str, $ecritures_by_campagne_by_tag)){
+                        $ecritures_by_campagne_by_tag[$str] = [ "value" => $str, "sum" => 0, "facture" => []];
                     }
+                    if(!in_array($f, $ecritures_by_campagne_by_tag[$str]["facture"], true)){
+                        $ecritures_by_campagne_by_tag[$str]["facture"][] = $f;
+                    }
+                    $ecritures_by_campagne_by_tag[$str]["sum"] += $l["montantHT"];
+                    if(!array_key_exists($campagne, $ecritures_by_campagne)){
+                        $ecritures_by_campagne[$campagne] = [ "campagne" => $campagne, "tags" => []];
+                        foreach($tags as $t){
+                            $ecritures_by_campagne[$campagne]["tags"][$t] = 0;
+                        }
+                    }
+                    $ecritures_by_campagne[$campagne]["tags"][$l["tag"]] += $l["montantHT"];
                 }
-                $ecritures_by_campagne[$campagne]["tags"][$f->tag] += $f->montantHT;
 
             }
         }
@@ -781,6 +791,9 @@ class GestionController extends CommonController
             $facture->type = "Vente";
             $facture->montantTTC = -$facture->montantTTC;
             $facture->montantHT = -$facture->montantHT;
+            foreach($facture->lignes as $l){
+                $l->montantHT = -$l->montantHT;
+            }
         } else {
             $facture->type = "Achat";
         }
@@ -801,6 +814,9 @@ class GestionController extends CommonController
                 $facture->type = "V";
                 $facture->montantTTC = -$facture->montantTTC;
                 $facture->montantHT = -$facture->montantHT;
+                foreach($facture->lignes as $l){
+                    $l->montantHT = -$l->montantHT;
+                }
             } else {
                 $facture->type = "A";
             }

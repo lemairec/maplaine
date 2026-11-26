@@ -12,6 +12,25 @@
         {{ form_row(form.type, {'attr': {'class': 'form-control'}}) }}
         {{ form_row(form.montantHT, {'attr': {'class': 'form-control'}}) }}
         {{ form_row(form.montantTTC, {'attr': {'class': 'form-control'}}) }}
+
+        <div class="form-group">
+            <label>Décomposition HT par tag</label>
+            <table class="table table-sm mb-1">
+                <thead><tr><th>Tag</th><th>Montant HT</th><th></th></tr></thead>
+                <tbody id="lignes" data-prototype="{{ ('<td>' ~ form_widget(form.lignes.vars.prototype.tag, {'attr': {'class': 'form-control'}}) ~ '</td><td>' ~ form_widget(form.lignes.vars.prototype.montantHT, {'attr': {'class': 'form-control js-ligne-ht'}}) ~ '</td>')|e('html_attr') }}" data-index="{{ form.lignes|length > 0 ? form.lignes|last.vars.name + 1 : 0 }}">
+                    {% for ligne in form.lignes %}
+                        <tr>
+                            <td>{{ form_widget(ligne.tag, {'attr': {'class': 'form-control'}}) }}</td>
+                            <td>{{ form_widget(ligne.montantHT, {'attr': {'class': 'form-control js-ligne-ht'}}) }}</td>
+                            <td><button type="button" class="btn btn-outline-danger btn-sm js-ligne-del">x</button></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            <button type="button" class="btn btn-outline-primary btn-sm" id="ligne-add">+ ligne</button>
+            <small class="ml-2">Reste affecté au tag de la facture : <b id="ligne-reste"></b></small>
+            {% do form.lignes.setRendered %}
+        </div>
         {{ form_row(form.banque, {'attr': {'class': 'form-control'}}) }}
         {{ form_row(form.compte, {'attr': {'class': 'form-control'}}) }}
         {{ form_row(form.paiementDate, {'attr': {'class': 'form-control'}}) }}
@@ -31,6 +50,35 @@
         {{ form_end(form) }}
     </div>
 </div>
+
+<script>
+(function(){
+    var tbody = document.getElementById('lignes');
+    var ht = document.getElementById('{{ form.montantHT.vars.id }}');
+    var reste = document.getElementById('ligne-reste');
+    function num(v){ var n = parseFloat(String(v).replace(',', '.')); return isNaN(n) ? 0 : n; }
+    function maj(){
+        var s = 0;
+        tbody.querySelectorAll('.js-ligne-ht').forEach(function(i){ s += num(i.value); });
+        reste.textContent = (num(ht.value) - s).toFixed(2) + ' €';
+    }
+    document.getElementById('ligne-add').addEventListener('click', function(){
+        var index = parseInt(tbody.dataset.index, 10);
+        var tr = document.createElement('tr');
+        tr.innerHTML = tbody.dataset.prototype.replace(/__name__/g, index)
+            + '<td><button type="button" class="btn btn-outline-danger btn-sm js-ligne-del">x</button></td>';
+        tbody.appendChild(tr);
+        tbody.dataset.index = index + 1;
+        maj();
+    });
+    tbody.addEventListener('click', function(e){
+        if (e.target.classList.contains('js-ligne-del')) { e.target.closest('tr').remove(); maj(); }
+    });
+    tbody.addEventListener('input', maj);
+    ht.addEventListener('input', maj);
+    maj();
+})();
+</script>
 
 
 

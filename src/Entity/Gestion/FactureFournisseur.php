@@ -9,6 +9,7 @@ use Symfony\Component\HttpFoundation\File\File;
 use Vich\UploaderBundle\Mapping\Annotation as Vich;
 
 use Symfony\Component\Uid\Uuid;
+use Doctrine\Common\Collections\ArrayCollection;
 
 /**
  * FactureFournisseur
@@ -22,6 +23,7 @@ class FactureFournisseur
     public function __construct()
     {
         $this->id = Uuid::v4();
+        $this->lignes = new ArrayCollection();
     }
 
     #[ORM\Id]
@@ -92,6 +94,9 @@ class FactureFournisseur
     #[ORM\OneToMany(targetEntity: 'App\Entity\Gestion\Commercialisation', mappedBy: 'facture')]
     public $commercialisations;
 
+    #[ORM\OneToMany(targetEntity: 'App\Entity\Gestion\FactureFournisseurLigne', mappedBy: 'facture', cascade: ['persist', 'remove'], orphanRemoval: true)]
+    public $lignes;
+
     #[ORM\ManyToOne(targetEntity: 'App\Entity\Gestion\Compte')]
     #[ORM\JoinColumn(nullable: false)]
     public $compte;
@@ -155,8 +160,14 @@ class FactureFournisseur
 
     public function getCompleteName(): ?string
     {
-        if($this->tag){
-            return $this->name." - ".$this->tag;
+        $tags = [];
+        foreach ($this->getMontantsParTag() as $l) {
+            if ($l["tag"] && !in_array($l["tag"], $tags)) {
+                $tags[] = $l["tag"];
+            }
+        }
+        if (count($tags) > 0) {
+            return $this->name." - ".implode(", ", $tags);
         } else {
             return $this->name;
         }
@@ -205,6 +216,47 @@ class FactureFournisseur
             $achats_total+=$a->price_total;
         }
         return $achats_total;
+    }
+
+    public function addLigne(FactureFournisseurLigne $ligne): void
+    {
+        $ligne->facture = $this;
+        $this->lignes[] = $ligne;
+    }
+
+    public function removeLigne(FactureFournisseurLigne $ligne): void
+    {
+        $this->lignes->removeElement($ligne);
+    }
+
+    /**
+     * Décomposition HT par tag : les lignes saisies, plus le reste
+     * (montantHT - somme des lignes) affecté au tag de la facture.
+     * Sans ligne, renvoie une seule entrée équivalente à l'ancien comportement.
+     *
+     * @return array<array{tag: ?string, montantHT: float}>
+     */
+    public function getMontantsParTag(): array
+    {
+        $res = [];
+        $somme = 0;
+        foreach ($this->lignes ?? [] as $l) {
+            $res[] = ["tag" => $l->tag ?: $this->tag, "montantHT" => $l->montantHT];
+            $somme += $l->montantHT;
+        }
+        $reste = $this->montantHT - $somme;
+        if (count($res) == 0 || abs($reste) > 0.005) {
+            $res[] = ["tag" => $this->tag, "montantHT" => $reste];
+        }
+        return $res;
+    }
+
+    function getLignesReste(){
+        $somme = 0;
+        foreach ($this->lignes ?? [] as $l) {
+            $somme += $l->montantHT;
+        }
+        return $this->montantHT - $somme;
     }
 
     function getDateStr(){
