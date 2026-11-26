@@ -18,6 +18,11 @@ security:
                 check_path: fos_user_security_check
                 enable_csrf: true
 
+            remember_me:
+                secret: '%kernel.secret%'
+                lifetime: 2592000 # 30 jours
+                path: /
+
             logout:       true
 
     role_hierarchy:
