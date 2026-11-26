@@ -12,7 +12,13 @@
                 <a href="{{ url('silo_balises') }}" class="btn btn-sm btn-outline-secondary">Liste</a>
             </span>
         </div>
-        <canvas id="myChart"></canvas>
+        <style>
+            .chart-wrap { position: relative; height: 300px; }
+            @media (min-width: 768px) { .chart-wrap { height: 450px; } }
+        </style>
+        <div class="chart-wrap">
+            <canvas id="myChart"></canvas>
+        </div>
     </div>
 
     <div class="card">
@@ -83,7 +89,9 @@
                 type: 'line',
                 data: { datasets: datasets },
                 options: {
-                    legend: { display: true, position: 'bottom' },
+                    maintainAspectRatio: false,
+                    // Sur mobile la légende mange tout le canvas : la liste en dessous (pastilles) sert de légende.
+                    legend: { display: window.innerWidth >= 768, position: 'bottom' },
                     tooltips: { mode: 'nearest', intersect: false },
                     scales: {
                         xAxes: [{ type: 'time', distribution: 'linear' }]

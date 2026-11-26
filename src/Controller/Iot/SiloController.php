@@ -122,7 +122,7 @@ class SiloController extends CommonController
     public function siloBalisesAll(Request $request)
     {
         $em = $this->getDoctrine()->getManager();
-        $duree = $request->query->get('duree', '1w');
+        $duree = $request->query->get('duree', '1m');
 
         $this->check_user($request);
         $balises = $em->getRepository(Balise::class)->getAllForCompany($this->company);
