@@ -124,7 +124,7 @@ class HomeController extends CommonController
         $session->set('companies', null);
         $session->set('company_id', null);
 
-        $this->security->login($user);
+        $this->security->login($user, 'form_login', 'main', [(new RememberMeBadge())->enable()]);
 
         $user->setLastLogin(new \DateTime());
         $em->persist($user);
